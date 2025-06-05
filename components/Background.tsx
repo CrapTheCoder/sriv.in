@@ -309,7 +309,7 @@ const Background = ({
                             if (ptsRef.current.length > 3) {
                                 try {
                                     const dln = Delaunay.from(ptsRef.current);
-                                    const tris = Array.from(dln.trianglePolygons());
+                                    const tris: Point[][] = Array.from(dln.trianglePolygons());
                                     if (tris.length > 0) {
                                         const tgtTri = tris[Math.floor(Math.random() * tris.length)];
                                         if (tgtTri && tgtTri.length === 3) {
@@ -328,6 +328,7 @@ const Background = ({
                                         }
                                     }
                                 } catch (e) {
+                                    console.error("Error generating Delaunay triangulation:", e);
                                 }
                             }
                             if (!centroidAdded) {
@@ -425,6 +426,7 @@ const Background = ({
                             if (segCount >= MAX_SEGS || newPos.length + 4 > MAX_POS_FLOATS || newDepths.length + 2 > MAX_DEPTH_FLOATS) break;
                         }
                     } catch (e) {
+                        console.error("Error generating Delaunay triangulation:", e);
                     }
                 }
                 cachePosRef.current = newPos;

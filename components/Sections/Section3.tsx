@@ -28,7 +28,7 @@ type Project = {
     github?: string;
 };
 
-const projects = [
+const projects: Project[] = [
     {
         title: "This Website",
         shortDescription: "Personal portfolio.",
