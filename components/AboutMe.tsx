@@ -40,7 +40,7 @@ const AboutMe = () => {
                 <br/>
                 <SlideFadeIn direction={direction} inMargin="-100px" outMargin="-80px">
                     <p data-text-cursor className="w-fit">
-                        I am a 2x IOITCer, Rated 1998 in CodeForces and 2148 in CodeChef. I have built projects such as
+                        I am a 2x IOITCer, rated 1998 in CodeForces and 2148 in CodeChef. I have built projects such as
                         a Lightweight Online Judge and a Chess Engine.
                     </p>
                 </SlideFadeIn>

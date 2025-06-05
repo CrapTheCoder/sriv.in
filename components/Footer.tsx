@@ -137,7 +137,7 @@ export default function Footer() {
     };
 
     const arrowVariants = {
-        hidden: {y: "100%", opacity: 0, transition: {duration: 0.3, ease: "easeIn"}},
+        hidden: {y: "100%", opacity: 0, transition: {duration: 0, ease: "easeIn"}},
         visible: {y: 0, opacity: 1, transition: {duration: 0.3, ease: "easeOut"}},
     };
 

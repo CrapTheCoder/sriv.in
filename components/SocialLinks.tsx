@@ -1,11 +1,16 @@
 "use client";
 
 import React, {useState} from "react";
-import {FileUser, Github, Linkedin, Mail} from "lucide-react";
+import {FileUser, Github, Linkedin, Mail, Youtube} from "lucide-react";
 import {SlideFadeIn} from "./SlideFadeIn";
 import Link from "next/link";
 
 const socials = [
+    {
+        name: "Youtube",
+        icon: Youtube,
+        link: "https://www.youtube.com/@sriv",
+    },
     {
         name: "GitHub",
         icon: Github,

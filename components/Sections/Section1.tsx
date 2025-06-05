@@ -12,13 +12,9 @@ type SectionProps = {
 };
 
 const SubText = () => {
-    const [hovered, setHovered] = useState(false);
-
     return (
         <div
             className="flex items-center justify-center z-50 pointer-events-auto"
-            onPointerEnter={() => setHovered(true)}
-            onPointerLeave={() => setHovered(false)}
             data-text-cursor
         >
             <div
