@@ -2,6 +2,7 @@
 
 import React, {useCallback, useEffect, useRef, useState} from "react";
 import {Delaunay} from "d3-delaunay";
+import {useCustomCursor} from "@/components/providers/CustomCursorProvider";
 
 const VERT_SHADER = `
 attribute vec2 a_pos;
@@ -52,15 +53,29 @@ const MAX_SEGS = 35000;
 const MAX_POS_FLOATS = MAX_SEGS * 4;
 const MAX_DEPTH_FLOATS = MAX_SEGS * 2;
 
-const INIT_BOUNDARY_PTS = 50;
-const MAX_PTS_UPPER = 300;
-const MAX_PTS_LOWER = 100;
-const MIN_PTS_UPPER = 70;
-const MIN_PTS_LOWER = 30;
+const INIT_BOUNDARY_PTS = 20;
 
-const ADD_PT_PROB = 50;
-const PT_UPDATE_MS = 45;
-const RM_PTS_PER_TICK = 1;
+const DESKTOP_PARAMS = {
+    MAX_PTS_UPPER: 300,
+    MAX_PTS_LOWER: 100,
+    MIN_PTS_UPPER: 70,
+    MIN_PTS_LOWER: 30,
+    ADD_PT_PROB: 50,
+    PT_UPDATE_MS: 45,
+    RM_PTS_PER_TICK: 1,
+};
+
+const MOBILE_PARAMS = {
+    MAX_PTS_UPPER: 80,
+    MAX_PTS_LOWER: 40,
+    MIN_PTS_UPPER: 30,
+    MIN_PTS_LOWER: 20,
+    ADD_PT_PROB: 25,
+    PT_UPDATE_MS: 100,
+    RM_PTS_PER_TICK: 1,
+};
+
+
 const MIN_TRI_AREA = 15;
 
 const getCentroid = (poly: Point[]): Point => {
@@ -138,37 +153,39 @@ const Background = ({
     const initDoneRef = useRef(false);
 
     const ptsRef = useRef<Point[]>([]);
-    const maxPtsRef = useRef(MAX_PTS_UPPER);
-    const minPtsRef = useRef(MIN_PTS_LOWER);
+    const maxPtsRef = useRef(DESKTOP_PARAMS.MAX_PTS_UPPER);
+    const minPtsRef = useRef(DESKTOP_PARAMS.MIN_PTS_LOWER);
 
     const addingPtsRef = useRef(true);
     const lastPtUpdateRef = useRef(0);
 
     const [styleIdx, setStyleIdx] = useState(0);
     const animFrameRef = useRef<number | null>(null);
+    const { isCursorVisible: isDesktop } = useCustomCursor();
+    const perfParams = isDesktop ? DESKTOP_PARAMS : MOBILE_PARAMS;
 
     const randomizePtTgts = useCallback(() => {
-        let maxTgt = Math.floor(Math.random() * (MAX_PTS_UPPER - MAX_PTS_LOWER + 1)) + MAX_PTS_LOWER;
-        let minTgt = Math.floor(Math.random() * (MIN_PTS_UPPER - MIN_PTS_LOWER + 1)) + MIN_PTS_LOWER;
-        const tgtGap = Math.max(20, (MAX_PTS_LOWER - MIN_PTS_UPPER) * 0.5);
+        let maxTgt = Math.floor(Math.random() * (perfParams.MAX_PTS_UPPER - perfParams.MAX_PTS_LOWER + 1)) + perfParams.MAX_PTS_LOWER;
+        let minTgt = Math.floor(Math.random() * (perfParams.MIN_PTS_UPPER - perfParams.MIN_PTS_LOWER + 1)) + perfParams.MIN_PTS_LOWER;
+        const tgtGap = Math.max(20, (perfParams.MAX_PTS_LOWER - perfParams.MIN_PTS_UPPER) * 0.5);
 
         if (minTgt >= maxTgt - tgtGap) {
             minTgt = Math.max(INIT_BOUNDARY_PTS + 10, maxTgt - tgtGap - Math.floor(Math.random() * (tgtGap / 2)));
-            minTgt = Math.max(MIN_PTS_LOWER, minTgt);
+            minTgt = Math.max(perfParams.MIN_PTS_LOWER, minTgt);
         }
         if (maxTgt <= minTgt + tgtGap) {
             maxTgt = minTgt + tgtGap + Math.floor(Math.random() * (tgtGap / 2));
-            maxTgt = Math.min(MAX_PTS_UPPER, maxTgt);
+            maxTgt = Math.min(perfParams.MAX_PTS_UPPER, maxTgt);
         }
         minTgt = Math.max(INIT_BOUNDARY_PTS + 5, minTgt);
         maxTgt = Math.max(minTgt + tgtGap, maxTgt);
-        minTgt = Math.min(minTgt, MAX_PTS_UPPER - tgtGap);
-        maxTgt = Math.min(maxTgt, MAX_PTS_UPPER);
+        minTgt = Math.min(minTgt, perfParams.MAX_PTS_UPPER - tgtGap);
+        maxTgt = Math.min(maxTgt, perfParams.MAX_PTS_UPPER);
 
         maxPtsRef.current = maxTgt;
         minPtsRef.current = minTgt;
         ptsChangedRef.current = true;
-    }, []);
+    }, [perfParams]);
 
     const initPts = useCallback((w: number, h: number) => {
         ptsRef.current = [];
@@ -256,31 +273,38 @@ const Background = ({
             const curGl = glRef.current;
             if (!curCnv || !curGl || !curCnv.parentElement) return;
 
+            const dpr = window.devicePixelRatio || 1;
             const newW = curCnv.parentElement.clientWidth;
             const newH = curCnv.parentElement.clientHeight;
             if (newW === 0 || newH === 0) return;
 
+            const newPhysicalW = newW * dpr;
+            const newPhysicalH = newH * dpr;
+
             if (!initDoneRef.current) {
-                curCnv.width = newW;
-                curCnv.height = newH;
-                curGl.viewport(0, 0, newW, newH);
+                curCnv.width = newPhysicalW;
+                curCnv.height = newPhysicalH;
+                curGl.viewport(0, 0, newPhysicalW, newPhysicalH);
                 initPts(newW, newH);
                 prevSizeRef.current = {width: newW, height: newH};
                 initDoneRef.current = true;
+                ptsChangedRef.current = true;
             } else {
                 const oldSize = prevSizeRef.current;
-                if (oldSize && (curCnv.width !== newW || curCnv.height !== newH)) {
-                    ptsRef.current = ptsRef.current.map(p => [
-                        (p[0] / oldSize.width) * newW,
-                        (p[1] / oldSize.height) * newH
-                    ] as Point).map(p => [Number.isFinite(p[0]) ? p[0] : 0, Number.isFinite(p[1]) ? p[1] : 0] as Point);
-                    curCnv.width = newW;
-                    curCnv.height = newH;
-                    curGl.viewport(0, 0, newW, newH);
+                if (oldSize && (oldSize.width !== newW || oldSize.height !== newH)) {
+                    if(oldSize.width > 0 && oldSize.height > 0) {
+                        ptsRef.current = ptsRef.current.map(p => [
+                            (p[0] / oldSize.width) * newW,
+                            (p[1] / oldSize.height) * newH
+                        ] as Point).map(p => [Number.isFinite(p[0]) ? p[0] : 0, Number.isFinite(p[1]) ? p[1] : 0] as Point);
+                    }
+                    curCnv.width = newPhysicalW;
+                    curCnv.height = newPhysicalH;
+                    curGl.viewport(0, 0, newPhysicalW, newPhysicalH);
                     prevSizeRef.current = {width: newW, height: newH};
+                    ptsChangedRef.current = true;
                 }
             }
-            ptsChangedRef.current = true;
         };
         handleResize();
 
@@ -300,11 +324,11 @@ const Background = ({
                 !curJsPosData || !curJsDepthData ||
                 curCnv.width === 0 || curCnv.height === 0) return;
 
-            if (time - lastPtUpdateRef.current > PT_UPDATE_MS) {
+            if (time - lastPtUpdateRef.current > perfParams.PT_UPDATE_MS) {
                 lastPtUpdateRef.current = time;
                 if (addingPtsRef.current) {
                     if (ptsRef.current.length < maxPtsRef.current) {
-                        if (Math.random() * 100 < ADD_PT_PROB) {
+                        if (Math.random() * 100 < perfParams.ADD_PT_PROB) {
                             let centroidAdded = false;
                             if (ptsRef.current.length > 3) {
                                 try {
@@ -318,8 +342,8 @@ const Background = ({
                                                 const area = 0.5 * Math.abs(p0[0] * (p1[1] - p2[1]) + p1[0] * (p2[1] - p0[1]) + p2[0] * (p0[1] - p1[1]));
                                                 if (Number.isFinite(area) && area > MIN_TRI_AREA) {
                                                     const centroid = getCentroid(tgtTri);
-                                                    if (Number.isFinite(centroid[0]) && centroid[0] > 0 && centroid[0] < curCnv.width &&
-                                                        Number.isFinite(centroid[1]) && centroid[1] > 0 && centroid[1] < curCnv.height) {
+                                                    if (Number.isFinite(centroid[0]) && centroid[0] > 0 && centroid[0] < curCnv.width / (window.devicePixelRatio || 1) &&
+                                                        Number.isFinite(centroid[1]) && centroid[1] > 0 && centroid[1] < curCnv.height / (window.devicePixelRatio || 1)) {
                                                         ptsRef.current.push(centroid);
                                                         centroidAdded = true;
                                                     }
@@ -328,13 +352,13 @@ const Background = ({
                                         }
                                     }
                                 } catch (e) {
-                                    console.error("Error generating Delaunay triangulation:", e);
+                                    console.log("Delaunay triangulation failed, adding random point instead.");
                                 }
                             }
                             if (!centroidAdded) {
-                                const mrg = Math.min(curCnv.width, curCnv.height) * 0.05;
-                                const rx = mrg + Math.random() * (curCnv.width - 2 * mrg);
-                                const ry = mrg + Math.random() * (curCnv.height - 2 * mrg);
+                                const mrg = Math.min(curCnv.width / (window.devicePixelRatio || 1), curCnv.height / (window.devicePixelRatio || 1)) * 0.05;
+                                const rx = mrg + Math.random() * (curCnv.width / (window.devicePixelRatio || 1) - 2 * mrg);
+                                const ry = mrg + Math.random() * (curCnv.height / (window.devicePixelRatio || 1) - 2 * mrg);
                                 ptsRef.current.push([rx, ry]);
                             }
                         }
@@ -343,7 +367,7 @@ const Background = ({
                     }
                 } else {
                     if (ptsRef.current.length > minPtsRef.current) {
-                        for (let i = 0; i < RM_PTS_PER_TICK; i++) {
+                        for (let i = 0; i < perfParams.RM_PTS_PER_TICK; i++) {
                             if (ptsRef.current.length > minPtsRef.current && ptsRef.current.length > INIT_BOUNDARY_PTS) {
                                 ptsRef.current.pop();
                             } else break;
@@ -367,8 +391,8 @@ const Background = ({
                 if (ptsRef.current.length > 3) {
                     try {
                         const dln = Delaunay.from(ptsRef.current);
-                        const cnvW = curCnv.width;
-                        const cnvH = curCnv.height;
+                        const cnvW = curCnv.width / (window.devicePixelRatio || 1);
+                        const cnvH = curCnv.height / (window.devicePixelRatio || 1);
                         const expFactor = Math.max(cnvW, cnvH) * 0.1;
                         const voroBounds: [number, number, number, number] = [-expFactor, -expFactor, cnvW + expFactor, cnvH + expFactor];
                         const voro = dln.voronoi(voroBounds);
@@ -406,6 +430,7 @@ const Background = ({
 
                                 const ang = style.rotate ? (1 - scl) * Math.PI / 2 * (style.scaleMode === 'exp' ? i : 1) : 0;
                                 const tfCell = transformPoly(vCell, vCentroid, scl, ang);
+                                const dpr = window.devicePixelRatio || 1;
 
                                 for (let j = 0; j < tfCell.length; j++) {
                                     if (segCount >= MAX_SEGS ||
@@ -415,7 +440,7 @@ const Background = ({
                                     const p1 = tfCell[j];
                                     const p2 = tfCell[(j + 1) % tfCell.length];
                                     if (Number.isFinite(p1[0]) && Number.isFinite(p1[1]) && Number.isFinite(p2[0]) && Number.isFinite(p2[1])) {
-                                        newPos.push(p1[0], p1[1], p2[0], p2[1]);
+                                        newPos.push(p1[0] * dpr, p1[1] * dpr, p2[0] * dpr, p2[1] * dpr);
                                         newDepths.push(normDepth, normDepth);
                                         segCount++;
                                     }
@@ -426,7 +451,7 @@ const Background = ({
                             if (segCount >= MAX_SEGS || newPos.length + 4 > MAX_POS_FLOATS || newDepths.length + 2 > MAX_DEPTH_FLOATS) break;
                         }
                     } catch (e) {
-                        console.error("Error generating Delaunay triangulation:", e);
+                        console.log("Delaunay triangulation failed:", e);
                     }
                 }
                 cachePosRef.current = newPos;
@@ -486,7 +511,7 @@ const Background = ({
                 if (fragShader) glClean.deleteShader(fragShader);
             }
         };
-    }, [initPts, randomizePtTgts, styleIdx]);
+    }, [initPts, randomizePtTgts, styleIdx, perfParams]);
 
     return (
         <div className="absolute inset-0 bg-[#1e1e1e]">

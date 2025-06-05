@@ -71,6 +71,7 @@ const CustomCursor: React.FC = () => {
     });
 
     useEffect(() => {
+        if (!isCursorVisible) return;
         if (headerLinkRect) {
             const targetX = headerLinkRect.left + headerLinkRect.width / 2;
             const targetY = headerLinkRect.top + headerLinkRect.height / 2;
@@ -106,9 +107,11 @@ const CustomCursor: React.FC = () => {
         y,
         subcursorX,
         subcursorY,
+        isCursorVisible,
     ]);
 
     useEffect(() => {
+        if (!isCursorVisible) return;
         let timeoutId: NodeJS.Timeout;
 
         const blink = () => {
@@ -127,9 +130,10 @@ const CustomCursor: React.FC = () => {
         return () => {
             if (timeoutId) clearTimeout(timeoutId);
         };
-    }, [isOverText]);
+    }, [isOverText, isCursorVisible]);
 
     useEffect(() => {
+        if (!isCursorVisible) return;
         let timeoutId: NodeJS.Timeout;
 
         const blink = () => {
@@ -148,7 +152,7 @@ const CustomCursor: React.FC = () => {
         return () => {
             if (timeoutId) clearTimeout(timeoutId);
         };
-    }, [isSubcursorOverText]);
+    }, [isSubcursorOverText, isCursorVisible]);
 
     const cursorVariants = useMemo(
         () => ({
@@ -273,7 +277,7 @@ const CustomCursor: React.FC = () => {
     }, [subcursorGenericRect, isSubcursorOverText]);
 
     useEffect(() => {
-        if (typeof window === "undefined") return;
+        if (typeof window === "undefined" || !isCursorVisible) return;
 
         const span = document.createElement("span");
         span.style.visibility = "hidden";
@@ -287,7 +291,7 @@ const CustomCursor: React.FC = () => {
                 document.body.removeChild(tempSpanRef.current);
             }
         };
-    }, []);
+    }, [isCursorVisible]);
 
     const detectElements = useCallback(() => {
         if (typeof window === "undefined") return;
@@ -458,10 +462,12 @@ const CustomCursor: React.FC = () => {
     const debouncedDetectElements = useDebounce(detectElements, 3);
 
     useEffect(() => {
+        if (!isCursorVisible) return;
         debouncedDetectElements();
-    }, [debouncedDetectElements]);
+    }, [debouncedDetectElements, isCursorVisible]);
 
     useEffect(() => {
+        if (!isCursorVisible) return;
         const handleMouseMove = (e: MouseEvent) => {
             setMousePosition({x: e.clientX, y: e.clientY});
         };
@@ -523,7 +529,7 @@ const CustomCursor: React.FC = () => {
             window.removeEventListener("scroll", handleScroll);
             document.removeEventListener("scroll", handleScroll);
         };
-    }, [scale, subcursorScale, isOverSubcursor, detectElements]);
+    }, [scale, subcursorScale, isOverSubcursor, detectElements, isCursorVisible]);
 
     if (!isCursorVisible) return null;
 

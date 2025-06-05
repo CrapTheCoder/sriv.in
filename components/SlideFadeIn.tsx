@@ -2,6 +2,7 @@
 
 import {ReactNode, useEffect, useRef} from "react";
 import {motion, useAnimation, useInView} from "motion/react";
+import {useCustomCursor} from "@/components/providers/CustomCursorProvider";
 
 type MarginValue = `${number}${"px" | "%"}`;
 type SlideDirection = "left" | "right";
@@ -26,6 +27,7 @@ export function SlideFadeIn({
     slideOffset?: number;
 }) {
     const ref = useRef(null);
+    const { isCursorVisible: isDesktop } = useCustomCursor();
     const isInView = useInView(ref, {
         margin:
             `${inMargin} 0px ${outMargin} 0px` as `${MarginValue} ${MarginValue} ${MarginValue} ${MarginValue}`,
@@ -45,8 +47,8 @@ export function SlideFadeIn({
     const offsetX = direction === "right" ? slideOffset : -slideOffset;
 
     const animationVariants = {
-        hidden: {opacity: 0, x: offsetX, filter: "blur(8px)"},
-        visible: {opacity: 1, x: 0, filter: "blur(0px)"},
+        hidden: {opacity: 0, x: offsetX, filter: isDesktop ? "blur(8px)" : "none"},
+        visible: {opacity: 1, x: 0, filter: "none"},
     };
 
     return (

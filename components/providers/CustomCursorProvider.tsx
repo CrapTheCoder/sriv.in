@@ -12,7 +12,6 @@ const CustomCursorContext = createContext<CustomCursorContextType | undefined>(
     undefined
 );
 
-// Debounce utility with cancel function
 interface DebouncedFunction<T extends (...args: unknown[]) => void> {
     cancel: () => void;
 
@@ -42,10 +41,9 @@ export function CustomCursorProvider({
                                      }: {
     children: React.ReactNode;
 }) {
-    const [isDesktop, setIsDesktop] = useState(false);
+    const [isDesktop, setIsDesktop] = useState(true);
     const sectionRef = useRef<HTMLDivElement | null>(null);
 
-    // Memoize device check function with debounce
     const checkDevice = useCallback(() => {
         const userAgent = navigator.userAgent.toLowerCase();
         const isMobileDevice =
@@ -60,7 +58,6 @@ export function CustomCursorProvider({
         [checkDevice]
     );
 
-    // Device check effect with cleanup
     useEffect(() => {
         checkDevice();
         window.addEventListener("resize", debouncedCheckDevice, {passive: true});
@@ -70,7 +67,6 @@ export function CustomCursorProvider({
         };
     }, [checkDevice, debouncedCheckDevice]);
 
-    // Memoize derived values with stable references
     const isCursorVisible = useMemo(() => isDesktop, [isDesktop]);
 
     const customCursorNoneTW = useMemo(
@@ -78,7 +74,6 @@ export function CustomCursorProvider({
         [isCursorVisible]
     );
 
-    // Memoize context value with stable references
     const contextValue = useMemo(
         () => ({
             isCursorVisible,
@@ -95,7 +90,6 @@ export function CustomCursorProvider({
     );
 }
 
-// Memoize the hook to prevent unnecessary re-renders
 export const useCustomCursor = (() => {
     const context = useContext(CustomCursorContext);
     if (context === undefined) {
