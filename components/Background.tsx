@@ -352,7 +352,7 @@ const Background = ({
                                         }
                                     }
                                 } catch (e) {
-                                    console.log("Delaunay triangulation failed, adding random point instead.");
+                                    console.log("Delaunay triangulation failed:", e);
                                 }
                             }
                             if (!centroidAdded) {
