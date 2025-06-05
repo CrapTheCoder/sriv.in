@@ -1,0 +1,127 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+@theme inline {
+    --font-header: var(--font-instrument-serif);
+    --font-mono: var(--font-jetbrains-mono);
+    --font-sans: var(--font-geist-sans);
+
+    --text-2xs: 0.65rem;
+    --text-2xs--line-height: calc(1 / 0.8);
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-primary: var(--primary);
+    --color-secondary: var(--secondary);
+    --color-accent: var(--accent);
+    --color-muted: var(--muted);
+    --color-border: var(--border);
+    --color-shadow_c: var(--shadow);
+    --color-header: var(--header);
+    --color-pill: var(--pill);
+    --color-destructive: var(--destructive);
+}
+
+@layer base {
+    :root {
+        --background: hsl(0 0% 95%);
+        --foreground: hsl(0 0% 0%);
+        --primary: hsl(222, 100%, 20%);
+        --secondary: hsl(0 0% 0%);
+        --accent: hsl(215, 100%, 73%);
+        --muted: hsl(0, 0%, 20%);
+        --border: color-mix(in hsl, var(--foreground) 46%, white);
+        --shadow: color-mix(in hsl, var(--foreground) 38%, white);
+        --pill: hsl(0 0% 95% / 0.346);
+        --fully-transparent: hsl(0 0% 95% / 0);
+        --destructive: hsl(0, 100%, 70%);
+    }
+
+    html[data-theme="dark"] {
+        --background: hsl(0, 0%, 5%);
+        --foreground: hsl(0 0% 100%);
+        --primary: hsl(220, 100%, 71%);
+        --secondary: hsl(0 0% 100%);
+        --accent: hsl(215, 83%, 69%);
+        --muted: hsl(0, 0%, 75%);
+        --border: color-mix(in hsl, var(--foreground) 35%, black);
+        --shadow: color-mix(in hsl, var(--foreground) 30%, black);
+        --pill: hsl(0 0% 23.9% / 0.346);
+        --fully-transparent: hsl(0 0% 5% / 0);
+        --destructive: hsl(0, 94%, 20%);
+    }
+}
+
+@layer base {
+    * {
+        border-color: var(--color-border);
+        cursor: none;
+    }
+}
+
+body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-jetbrains-mono), monospace, Arial, Helvetica,
+    sans-serif;
+}
+
+html {
+    scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
+}
+
+::selection {
+    background-color: var(--primary);
+    color: var(--background);
+}
+
+.no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar-button {
+    display: none;
+}
+
+.underline-fade {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 0 2px;
+    background-repeat: no-repeat;
+    background-position: 0 100%;
+    transition: background-size 0.3s ease, background-position 0.3s ease,
+    color 0.2s ease;
+    text-decoration: none;
+}
+
+.underline-fade:hover {
+    background-size: 100% 2px;
+    background-position: 0 100%;
+}
+
+:root {
+    --logo-icon-width-not-scrolled: 28px;
+    --logo-icon-width-scrolled: 25px;
+
+    --logo-text-size-not-scrolled: 1.4rem;
+    --logo-text-size-scrolled: 1.2rem;
+
+    --headerlinks-text-size-scrolled: 0.75rem;
+    --headerlinks-text-size-not-scrolled: 0.9rem;
+}
+
+@media (min-width: 640px) {
+    :root {
+        --logo-icon-width-not-scrolled: 45px;
+        --logo-icon-width-scrolled: 33px;
+
+        --logo-text-size-not-scrolled: 2rem;
+        --logo-text-size-scrolled: 1.5rem;
+
+        --headerlinks-text-size-scrolled: 1rem;
+        --headerlinks-text-size-not-scrolled: 1.3rem;
+    }
+}
