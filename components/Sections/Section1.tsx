@@ -1,6 +1,5 @@
 "use client";
 
-import {useState} from "react";
 import Section from "./Section";
 import SocialLinks from "../SocialLinks";
 import {SlideFadeIn} from "../SlideFadeIn";
