@@ -1,6 +1,6 @@
 "use client";
 
-import {ReactNode, useEffect, useRef} from "react";
+import {ReactNode, useEffect, useMemo, useRef} from "react";
 import {motion, useAnimation, useInView} from "motion/react";
 import {useCustomCursor} from "@/components/providers/CustomCursorProvider";
 
@@ -36,20 +36,21 @@ export function SlideFadeIn({
 
     const controls = useAnimation();
 
+    const offsetX = direction === "right" ? slideOffset : -slideOffset;
+
+    const animationVariants = useMemo(() => ({
+        hidden: {opacity: 0, x: offsetX, filter: isDesktop ? "blur(8px)" : "none"},
+        visible: {opacity: 1, x: 0, filter: "none"},
+    }), [offsetX, isDesktop]);
+
+
     useEffect(() => {
         if (isInView) {
             controls.start("visible");
         } else {
             controls.start("hidden");
         }
-    }, [isInView, controls]);
-
-    const offsetX = direction === "right" ? slideOffset : -slideOffset;
-
-    const animationVariants = {
-        hidden: {opacity: 0, x: offsetX, filter: isDesktop ? "blur(8px)" : "none"},
-        visible: {opacity: 1, x: 0, filter: "none"},
-    };
+    }, [isInView, controls, animationVariants]);
 
     return (
         <motion.div
