@@ -49,19 +49,19 @@ const DRAW_STYLES: DrawStyle[] = [
     {name: "scaleLinRot", scaleMode: "linear", rotate: true, maxLayers: 15, scaleStepLinear: 0.02, cutoffVolMul: 2e-5},
 ];
 
-const MAX_SEGS = 35000;
+const MAX_SEGS = 12000;
 const MAX_POS_FLOATS = MAX_SEGS * 4;
 const MAX_DEPTH_FLOATS = MAX_SEGS * 2;
 
-const INIT_BOUNDARY_PTS = 20;
+const INIT_BOUNDARY_PTS = 10;
 
 const DESKTOP_PARAMS = {
-    MAX_PTS_UPPER: 300,
-    MAX_PTS_LOWER: 100,
-    MIN_PTS_UPPER: 70,
-    MIN_PTS_LOWER: 30,
-    ADD_PT_PROB: 50,
-    PT_UPDATE_MS: 45,
+    MAX_PTS_UPPER: 150,
+    MAX_PTS_LOWER: 70,
+    MIN_PTS_UPPER: 50,
+    MIN_PTS_LOWER: 20,
+    ADD_PT_PROB: 20,
+    PT_UPDATE_MS: 200,
     RM_PTS_PER_TICK: 1,
 };
 
@@ -70,8 +70,8 @@ const MOBILE_PARAMS = {
     MAX_PTS_LOWER: 30,
     MIN_PTS_UPPER: 20,
     MIN_PTS_LOWER: 10,
-    ADD_PT_PROB: 25,
-    PT_UPDATE_MS: 70,
+    ADD_PT_PROB: 10,
+    PT_UPDATE_MS: 300,
     RM_PTS_PER_TICK: 1,
 };
 
@@ -318,6 +318,10 @@ const Background = ({
             const curDepthAttr = depthAttrRef.current;
             const curJsPosData = jsPosDataRef.current;
             const curJsDepthData = jsDepthDataRef.current;
+
+            if (document.hidden) {
+                return;
+            }
 
             if (!curGl || !curCnv || !curPosBuf || curPosAttr === -1 ||
                 !curDepthBuf || curDepthAttr === -1 ||
