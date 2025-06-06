@@ -6,7 +6,6 @@ import {Github, Link as LinkIcon} from "lucide-react";
 import Link from "next/link";
 import SmallTextPills from "@/components/SmallTextPills";
 import Section from "./Section";
-import Background from "@/components/Background";
 
 interface MonthYear {
     month: number;

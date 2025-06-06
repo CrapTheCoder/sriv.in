@@ -124,7 +124,7 @@ const Background = ({
                         className = "",
                         backgroundOpacity = 1,
                     }: {
-    children: React.ReactNode;
+    children?: React.ReactNode;
     className?: string;
     backgroundOpacity?: number;
 }) => {
