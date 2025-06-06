@@ -31,7 +31,7 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en" className="no-scrollbar" suppressHydrationWarning>
+        <html lang="en" className="no-scrollbar sm:scroll-snap-type-y-mandatory" suppressHydrationWarning>
         <body
             className={`${fontVariables} antialiased bg-background overscroll-y-auto sm:overscroll-y-none scroll-smooth`}
         >

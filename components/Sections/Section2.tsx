@@ -20,68 +20,65 @@ const Section2 = ({className = "", ref}: SectionProps) => {
         const updateDirection = () => {
             setDirection(window.innerWidth >= 768 ? "right" : "left");
         };
-
         updateDirection();
         window.addEventListener("resize", updateDirection);
         return () => window.removeEventListener("resize", updateDirection);
     }, []);
 
     return (
-        <Section className={`${className} border-t`} ref={ref} sectionName="About">
-            <Background
-                className="flex flex-col justify-center items-center align-middle text-shadow-lg/100 text-white py-12 md:py-20"
+        <Section className={`${className} border-t mb-16`} ref={ref} sectionName="About">
+            <Background />
+
+            <div
+                className="
+                    w-full max-w-[90rem]
+                    mx-auto
+                    py-8 md:py-12
+                    px-8 sm:px-12 md:px-16
+                    backdrop-blur-[3rem]
+                    rounded-[70px]
+                    shadow-2xl
+                    pointer-events-auto
+                    relative
+                    z-10
+                "
             >
-                <div
-                    className="
-                        w-full max-w-[90rem]
-                        mx-auto
-                        py-8 md:py-12
-                        px-8 sm:px-12 md:px-16
-                        backdrop-blur-[3rem]
-                        rounded-[70px]
-                        shadow-2xl
-                        pointer-events-auto
-                        relative
-                        z-10
-                    "
-                >
-                    <div className="w-full">
-                        <div
-                            className="flex flex-col md:flex-row justify-center gap-x-10 lg:gap-x-16 md:pt-12 md:items-start overflow-hidden">
-                            <div className="flex flex-col items-center md:items-start gap-y-4 md:w-1/2 mb-4 md:mb-0">
-                                <Experience/>
-                            </div>
-                            <div className="flex flex-col items-center md:items-start gap-y-4 md:w-1/2 md:mb-0">
-                                <Education/>
-                                <AboutMe/>
-                            </div>
+                <div className="w-full">
+                    <div
+                        className="flex flex-col md:flex-row justify-center gap-x-10 lg:gap-x-16 md:pt-12 md:items-start overflow-hidden">
+                        <div className="flex flex-col items-center md:items-start gap-y-4 md:w-1/2 mb-4 md:mb-0">
+                            <Experience/>
+                        </div>
+                        <div className="flex flex-col items-center md:items-start gap-y-4 md:w-1/2 md:mb-0">
+                            <Education/>
+                            <AboutMe/>
+                        </div>
+                    </div>
+
+                    <div
+                        className="flex flex-col md:flex-row justify-center gap-x-10 lg:gap-x-16 pt-8 md:pt-12 md:items-start overflow-hidden">
+                        <div className="flex flex-col items-center w-full gap-y-4 md:w-1/2 md:mb-0">
+                            {direction === "right" && (
+                                <SlideFadeIn>
+                                    <DisplayLanguages/>
+                                </SlideFadeIn>
+                            )}
+                            {direction === "left" && <div className="hidden md:block min-h-[1px]"></div>}
                         </div>
 
-                        <div
-                            className="flex flex-col md:flex-row justify-center gap-x-10 lg:gap-x-16 pt-8 md:pt-12 md:items-start overflow-hidden">
-                            <div className="flex flex-col items-center w-full gap-y-4 md:w-1/2 md:mb-0">
-                                {direction === "right" && (
-                                    <SlideFadeIn>
-                                        <DisplayLanguages/>
-                                    </SlideFadeIn>
-                                )}
-                                {direction === "left" && <div className="hidden md:block min-h-[1px]"></div>}
-                            </div>
-
-                            <div className="flex flex-col items-center w-full gap-y-4 md:w-1/2 md:mb-0">
-                                {direction === "left" && (
-                                    <SlideFadeIn>
-                                        <DisplayLanguages/>
-                                    </SlideFadeIn>
-                                )}
-                                <SlideFadeIn direction={direction}> {}
-                                    <DisplayTechnologies/>
+                        <div className="flex flex-col items-center w-full gap-y-4 md:w-1/2 md:mb-0">
+                            {direction === "left" && (
+                                <SlideFadeIn>
+                                    <DisplayLanguages/>
                                 </SlideFadeIn>
-                            </div>
+                            )}
+                            <SlideFadeIn direction={direction}>
+                                <DisplayTechnologies/>
+                            </SlideFadeIn>
                         </div>
                     </div>
                 </div>
-            </Background>
+            </div>
         </Section>
     );
 };

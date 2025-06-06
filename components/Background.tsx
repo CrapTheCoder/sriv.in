@@ -56,12 +56,13 @@ const MAX_DEPTH_FLOATS = MAX_SEGS * 2;
 const INIT_BOUNDARY_PTS = 10;
 
 const DESKTOP_PARAMS = {
-    MAX_PTS_UPPER: 150,
+    MAX_PTS_UPPER: 200,
     MAX_PTS_LOWER: 70,
     MIN_PTS_UPPER: 50,
     MIN_PTS_LOWER: 20,
     ADD_PT_PROB: 20,
-    PT_UPDATE_MS: 200,
+    RM_PT_PROB: 30,
+    PT_UPDATE_MS: 100,
     RM_PTS_PER_TICK: 1,
 };
 
@@ -70,13 +71,11 @@ const MOBILE_PARAMS = {
     MAX_PTS_LOWER: 30,
     MIN_PTS_UPPER: 20,
     MIN_PTS_LOWER: 10,
-    ADD_PT_PROB: 10,
-    PT_UPDATE_MS: 300,
-    RM_PTS_PER_TICK: 1,
+    ADD_PT_PROB: 0,
+    RM_PT_PROB: 0,
+    PT_UPDATE_MS: 999999,
+    RM_PTS_PER_TICK: 0,
 };
-
-
-const MIN_TRI_AREA = 15;
 
 const getCentroid = (poly: Point[]): Point => {
     if (!poly || poly.length === 0) return [0, 0];
@@ -96,9 +95,8 @@ const getPolyPerim = (poly: Point[]): number => {
         const p2 = poly[(i + 1) % poly.length];
         const dx = p2[0] - p1[0];
         const dy = p2[1] - p1[1];
-        if (Number.isFinite(dx) && Number.isFinite(dy)) {
+        if (Number.isFinite(dx) && Number.isFinite(dy))
             perim += Math.sqrt(dx * dx + dy * dy);
-        }
     }
     return perim;
 };
@@ -131,394 +129,281 @@ const Background = ({
     backgroundOpacity?: number;
 }) => {
     const cnvRef = useRef<HTMLCanvasElement>(null);
-    const glRef = useRef<WebGLRenderingContext | null>(null);
-    const progRef = useRef<WebGLProgram | null>(null);
-
-    const posBufRef = useRef<WebGLBuffer | null>(null);
-    const posAttrRef = useRef<number>(-1);
-    const depthBufRef = useRef<WebGLBuffer | null>(null);
-    const depthAttrRef = useRef<number>(-1);
-
-    const resUniRef = useRef<WebGLUniformLocation | null>(null);
-    const clrUniRef = useRef<WebGLUniformLocation | null>(null);
-
-    const jsPosDataRef = useRef<Float32Array | null>(null);
-    const jsDepthDataRef = useRef<Float32Array | null>(null);
-
-    const ptsChangedRef = useRef(true);
-    const cachePosRef = useRef<number[]>([]);
-    const cacheDepthRef = useRef<number[]>([]);
-
-    const prevSizeRef = useRef<{ width: number; height: number } | null>(null);
-    const initDoneRef = useRef(false);
-
-    const ptsRef = useRef<Point[]>([]);
-    const maxPtsRef = useRef(DESKTOP_PARAMS.MAX_PTS_UPPER);
-    const minPtsRef = useRef(DESKTOP_PARAMS.MIN_PTS_LOWER);
-
-    const addingPtsRef = useRef(true);
-    const lastPtUpdateRef = useRef(0);
-
-    const [styleIdx, setStyleIdx] = useState(0);
-    const animFrameRef = useRef<number | null>(null);
-    const { isCursorVisible: isDesktop } = useCustomCursor();
+    const {isCursorVisible: isDesktop} = useCustomCursor();
     const perfParams = isDesktop ? DESKTOP_PARAMS : MOBILE_PARAMS;
+    const [styleIdx, setStyleIdx] = useState(0);
 
-    const randomizePtTgts = useCallback(() => {
-        let maxTgt = Math.floor(Math.random() * (perfParams.MAX_PTS_UPPER - perfParams.MAX_PTS_LOWER + 1)) + perfParams.MAX_PTS_LOWER;
-        let minTgt = Math.floor(Math.random() * (perfParams.MIN_PTS_UPPER - perfParams.MIN_PTS_LOWER + 1)) + perfParams.MIN_PTS_LOWER;
-        const tgtGap = Math.max(20, (perfParams.MAX_PTS_LOWER - perfParams.MIN_PTS_UPPER) * 0.5);
+    const glObjectsRef = useRef<{
+        gl: WebGLRenderingContext;
+        prog: WebGLProgram;
+        posBuf: WebGLBuffer;
+        depthBuf: WebGLBuffer;
+        posAttr: number;
+        depthAttr: number;
+        jsPosData: Float32Array;
+        jsDepthData: Float32Array;
+    } | null>(null);
 
-        if (minTgt >= maxTgt - tgtGap) {
-            minTgt = Math.max(INIT_BOUNDARY_PTS + 10, maxTgt - tgtGap - Math.floor(Math.random() * (tgtGap / 2)));
-            minTgt = Math.max(perfParams.MIN_PTS_LOWER, minTgt);
+    const animStateRef = useRef({
+        pts: [] as Point[],
+        ptsChanged: true,
+        vertexCount: 0,
+        maxPts: perfParams.MAX_PTS_UPPER,
+        minPts: perfParams.MIN_PTS_LOWER,
+        addingPts: true,
+        lastPtUpdate: 0,
+        animFrameId: null as number | null,
+    });
+
+    const draw = useCallback(() => {
+        const glObjects = glObjectsRef.current;
+        const animState = animStateRef.current;
+        if (!glObjects) return;
+
+        const {gl, posBuf, depthBuf, posAttr, depthAttr, jsPosData, jsDepthData} = glObjects;
+
+        if (animState.ptsChanged) {
+            animState.ptsChanged = false;
+            const style = DRAW_STYLES[styleIdx];
+            const dpr = window.devicePixelRatio || 1;
+            const cnvW = gl.canvas.width / dpr, cnvH = gl.canvas.height / dpr;
+            const newPos: number[] = [], newDepths: number[] = [];
+
+            try {
+                const dln = Delaunay.from(animState.pts);
+                const expFactor = Math.max(cnvW, cnvH) * 0.1;
+                const voroBounds: [number, number, number, number] = [-expFactor, -expFactor, cnvW + expFactor, cnvH + expFactor];
+                const voro = dln.voronoi(voroBounds);
+
+                for (const vCell of voro.cellPolygons()) {
+                    if (!vCell || vCell.length < 3) continue;
+                    const vCentroid = getCentroid(vCell);
+                    if (!Number.isFinite(vCentroid[0])) continue;
+                    const vPerim = getPolyPerim(vCell);
+                    if (!vPerim) continue;
+
+                    let effMaxLayers = style.maxLayers;
+                    if (!isDesktop) {
+                        effMaxLayers = Math.max(1, Math.ceil(style.maxLayers / 3));
+                    } else if (style.scaleMode !== "none") {
+                        effMaxLayers = Math.min(2 + (Math.floor(vPerim) % 18), style.maxLayers);
+                    }
+
+                    for (let i = 0; i < effMaxLayers; i++) {
+                        let scl;
+                        if (style.scaleMode === "linear") scl = 1.0 - i * (style.scaleStepLinear || 0.1); else if (style.scaleMode === "exp") scl = 1.0 / (i + 1); else scl = 1.0;
+                        if (scl < 0.05 && i > 0) break;
+                        const ang = style.rotate ? (1 - scl) * Math.PI / 2 * (style.scaleMode === 'exp' ? i : 1) : 0;
+                        const tfCell = transformPoly(vCell, vCentroid, scl, ang);
+                        for (let j = 0; j < tfCell.length; j++) {
+                            if (newPos.length >= MAX_POS_FLOATS)
+                                break;
+                            const p1 = tfCell[j], p2 = tfCell[(j + 1) % tfCell.length];
+                            if (Number.isFinite(p1[0]) && Number.isFinite(p1[1]) && Number.isFinite(p2[0]) && Number.isFinite(p2[1])) {
+                                newPos.push(p1[0] * dpr, p1[1] * dpr, p2[0] * dpr, p2[1] * dpr);
+                                newDepths.push(i / (style.maxLayers - 1 || 1), i / (style.maxLayers - 1 || 1));
+                            }
+                        }
+                        if (newPos.length >= MAX_POS_FLOATS)
+                            break;
+                    }
+                    if (newPos.length >= MAX_POS_FLOATS)
+                        break;
+                }
+            } catch (e) {
+                console.error(e);
+            }
+
+            animState.vertexCount = newPos.length / 2;
+            if (animState.vertexCount > 0) {
+                gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+                for (let i = 0; i < newPos.length; i++) jsPosData[i] = newPos[i];
+                gl.bufferSubData(gl.ARRAY_BUFFER, 0, jsPosData.subarray(0, newPos.length));
+                gl.bindBuffer(gl.ARRAY_BUFFER, depthBuf);
+                for (let i = 0; i < newDepths.length; i++) jsDepthData[i] = newDepths[i];
+                gl.bufferSubData(gl.ARRAY_BUFFER, 0, jsDepthData.subarray(0, newDepths.length));
+            }
         }
-        if (maxTgt <= minTgt + tgtGap) {
-            maxTgt = minTgt + tgtGap + Math.floor(Math.random() * (tgtGap / 2));
-            maxTgt = Math.min(perfParams.MAX_PTS_UPPER, maxTgt);
+
+        gl.lineWidth(isDesktop ? 1.0 : 2.5);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        if (animState.vertexCount > 0) {
+            gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+            gl.vertexAttribPointer(posAttr, 2, gl.FLOAT, false, 0, 0);
+            gl.bindBuffer(gl.ARRAY_BUFFER, depthBuf);
+            gl.vertexAttribPointer(depthAttr, 1, gl.FLOAT, false, 0, 0);
+            gl.drawArrays(gl.LINES, 0, animState.vertexCount);
         }
-        minTgt = Math.max(INIT_BOUNDARY_PTS + 5, minTgt);
-        maxTgt = Math.max(minTgt + tgtGap, maxTgt);
-        minTgt = Math.min(minTgt, perfParams.MAX_PTS_UPPER - tgtGap);
-        maxTgt = Math.min(maxTgt, perfParams.MAX_PTS_UPPER);
-
-        maxPtsRef.current = maxTgt;
-        minPtsRef.current = minTgt;
-        ptsChangedRef.current = true;
-    }, [perfParams]);
-
-    const initPts = useCallback((w: number, h: number) => {
-        ptsRef.current = [];
-        randomizePtTgts();
-        addingPtsRef.current = true;
-        lastPtUpdateRef.current = 0;
-
-        const mrg = Math.min(w, h) * 0.05;
-        const boundaryPts: Point[] = [
-            [mrg, mrg], [w - mrg, mrg], [w - mrg, h - mrg], [mrg, h - mrg],
-            [w / 2, mrg], [w - mrg, h / 2], [w / 2, h - mrg], [mrg, h / 2],
-        ];
-        ptsRef.current.push(...boundaryPts);
-
-        const initRandPts = Math.min(10, Math.floor(minPtsRef.current / 2));
-        for (let i = 0; i < initRandPts; i++) {
-            const rx = mrg + Math.random() * (w - 2 * mrg);
-            const ry = mrg + Math.random() * (h - 2 * mrg);
-            ptsRef.current.push([rx, ry]);
-        }
-        ptsChangedRef.current = true;
-    }, [randomizePtTgts]);
+    }, [styleIdx, isDesktop]);
 
     useEffect(() => {
         const cnv = cnvRef.current;
-        if (!cnv || (cnv.parentElement && (cnv.parentElement.clientWidth === 0 || cnv.parentElement.clientHeight === 0))) {
+        if (!cnv)
             return;
+
+        if (!glObjectsRef.current) {
+            const gl = cnv.getContext("webgl", {antialias: true, premultipliedAlpha: false});
+
+            if (!gl)
+                return;
+
+            const compileShader = (src: string, type: number) => {
+                const shader = gl.createShader(type);
+                if (!shader) return null;
+                gl.shaderSource(shader, src);
+                gl.compileShader(shader);
+                return gl.getShaderParameter(shader, gl.COMPILE_STATUS) ? shader : (gl.deleteShader(shader), null);
+            };
+
+            const vertShader = compileShader(VERT_SHADER, gl.VERTEX_SHADER);
+            const fragShader = compileShader(FRAG_SHADER, gl.FRAGMENT_SHADER);
+
+            if (!vertShader || !fragShader)
+                return;
+
+            const prog = gl.createProgram();
+
+            if (!prog)
+                return;
+
+            gl.attachShader(prog, vertShader);
+            gl.attachShader(prog, fragShader);
+            gl.linkProgram(prog);
+
+            if (!gl.getProgramParameter(prog, gl.LINK_STATUS))
+                return;
+
+            gl.useProgram(prog);
+
+            const posBuf = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+
+            const jsPosData = new Float32Array(MAX_POS_FLOATS);
+            gl.bufferData(gl.ARRAY_BUFFER, jsPosData.byteLength, gl.DYNAMIC_DRAW);
+
+            const posAttr = gl.getAttribLocation(prog, "a_pos");
+            gl.enableVertexAttribArray(posAttr);
+
+            const depthBuf = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, depthBuf);
+
+            const jsDepthData = new Float32Array(MAX_DEPTH_FLOATS);
+            gl.bufferData(gl.ARRAY_BUFFER, jsDepthData.byteLength, gl.DYNAMIC_DRAW);
+
+            const depthAttr = gl.getAttribLocation(prog, "a_depth_val");
+            gl.enableVertexAttribArray(depthAttr);
+
+            glObjectsRef.current = {gl, prog, posBuf, depthBuf, posAttr, depthAttr, jsPosData, jsDepthData};
         }
 
-        const gl = cnv.getContext("webgl", {antialias: true, premultipliedAlpha: false});
-        if (!gl) {
-            return;
-        }
-        glRef.current = gl;
+        const glObjects = glObjectsRef.current;
+        const animState = animStateRef.current;
+        const {gl} = glObjects;
+
         gl.clearColor(30 / 255, 30 / 255, 30 / 255, 1.0);
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-        const compileShader = (src: string, type: number) => {
-            const shader = gl.createShader(type);
-            if (!shader) return null;
-            gl.shaderSource(shader, src);
-            gl.compileShader(shader);
-            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-                gl.deleteShader(shader);
-                return null;
-            }
-            return shader;
-        };
+        const clrUni = gl.getUniformLocation(glObjects.prog, "u_clr");
+        gl.uniform4f(clrUni, 210 / 255, 210 / 255, 210 / 255, 1.0);
 
-        const vertShader = compileShader(VERT_SHADER, gl.VERTEX_SHADER);
-        const fragShader = compileShader(FRAG_SHADER, gl.FRAGMENT_SHADER);
-        if (!vertShader || !fragShader) return;
-
-        const prog = gl.createProgram();
-        if (!prog) return;
-        gl.attachShader(prog, vertShader);
-        gl.attachShader(prog, fragShader);
-        gl.linkProgram(prog);
-        if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-            return;
+        const randomizePtTgts = () => {
+            animState.maxPts = Math.floor(Math.random() * (perfParams.MAX_PTS_UPPER - perfParams.MAX_PTS_LOWER + 1)) + perfParams.MAX_PTS_LOWER;
+            animState.minPts = Math.floor(Math.random() * (perfParams.MIN_PTS_UPPER - perfParams.MIN_PTS_LOWER + 1)) + perfParams.MIN_PTS_LOWER;
         }
-        progRef.current = prog;
-        gl.useProgram(prog);
 
-        posBufRef.current = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, posBufRef.current);
-        gl.bufferData(gl.ARRAY_BUFFER, MAX_POS_FLOATS * Float32Array.BYTES_PER_ELEMENT, gl.DYNAMIC_DRAW);
-        jsPosDataRef.current = new Float32Array(MAX_POS_FLOATS);
-        posAttrRef.current = gl.getAttribLocation(prog, "a_pos");
-        gl.enableVertexAttribArray(posAttrRef.current);
+        const initPoints = (w: number, h: number) => {
+            animState.pts = [];
+            randomizePtTgts();
+            animState.addingPts = true;
 
-        depthBufRef.current = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, depthBufRef.current);
-        gl.bufferData(gl.ARRAY_BUFFER, MAX_DEPTH_FLOATS * Float32Array.BYTES_PER_ELEMENT, gl.DYNAMIC_DRAW);
-        jsDepthDataRef.current = new Float32Array(MAX_DEPTH_FLOATS);
-        depthAttrRef.current = gl.getAttribLocation(prog, "a_depth_val");
-        gl.enableVertexAttribArray(depthAttrRef.current);
+            const mrg = Math.min(w, h) * 0.05;
+            animState.pts.push([mrg, mrg], [w - mrg, mrg], [w - mrg, h - mrg], [mrg, h - mrg], [w / 2, mrg], [w - mrg, h / 2], [w / 2, h - mrg], [mrg, h / 2]);
 
-        resUniRef.current = gl.getUniformLocation(prog, "u_res");
-        clrUniRef.current = gl.getUniformLocation(prog, "u_clr");
+            const numPoints = isDesktop ? Math.floor(Math.random() * (animState.maxPts - animState.minPts + 1)) + animState.minPts : perfParams.MAX_PTS_UPPER;
+            for (let i = 0; i < numPoints; i++)
+                animState.pts.push([mrg + Math.random() * (w - 2 * mrg), mrg + Math.random() * (h - 2 * mrg)]);
+
+            animState.ptsChanged = true;
+        };
 
         const handleResize = () => {
-            const curCnv = cnvRef.current;
-            const curGl = glRef.current;
-            if (!curCnv || !curGl || !curCnv.parentElement) return;
+            if (!cnv.parentElement)
+                return;
 
             const dpr = window.devicePixelRatio || 1;
-            const newW = curCnv.parentElement.clientWidth;
-            const newH = curCnv.parentElement.clientHeight;
-            if (newW === 0 || newH === 0) return;
+            const newW = cnv.parentElement.clientWidth, newH = cnv.parentElement.clientHeight;
 
-            const newPhysicalW = newW * dpr;
-            const newPhysicalH = newH * dpr;
+            if (newW === 0 || newH === 0)
+                return;
 
-            if (!initDoneRef.current) {
-                curCnv.width = newPhysicalW;
-                curCnv.height = newPhysicalH;
-                curGl.viewport(0, 0, newPhysicalW, newPhysicalH);
-                initPts(newW, newH);
-                prevSizeRef.current = {width: newW, height: newH};
-                initDoneRef.current = true;
-                ptsChangedRef.current = true;
-            } else {
-                const oldSize = prevSizeRef.current;
-                if (oldSize && (oldSize.width !== newW || oldSize.height !== newH)) {
-                    if(oldSize.width > 0 && oldSize.height > 0) {
-                        ptsRef.current = ptsRef.current.map(p => [
-                            (p[0] / oldSize.width) * newW,
-                            (p[1] / oldSize.height) * newH
-                        ] as Point).map(p => [Number.isFinite(p[0]) ? p[0] : 0, Number.isFinite(p[1]) ? p[1] : 0] as Point);
-                    }
-                    curCnv.width = newPhysicalW;
-                    curCnv.height = newPhysicalH;
-                    curGl.viewport(0, 0, newPhysicalW, newPhysicalH);
-                    prevSizeRef.current = {width: newW, height: newH};
-                    ptsChangedRef.current = true;
-                }
+            const newPhysW = newW * dpr, newPhysH = newH * dpr;
+
+            if (cnv.width !== newPhysW || cnv.height !== newPhysH) {
+                cnv.width = newPhysW;
+                cnv.height = newPhysH;
+                gl.viewport(0, 0, newPhysW, newPhysH);
+
+                const resUni = gl.getUniformLocation(glObjects.prog, "u_res");
+                gl.uniform2f(resUni, newPhysW, newPhysH);
+                initPoints(newW, newH);
             }
         };
+
         handleResize();
 
-        const render = (time: number) => {
-            animFrameRef.current = requestAnimationFrame(render);
-            const curGl = glRef.current;
-            const curCnv = cnvRef.current;
-            const curPosBuf = posBufRef.current;
-            const curPosAttr = posAttrRef.current;
-            const curDepthBuf = depthBufRef.current;
-            const curDepthAttr = depthAttrRef.current;
-            const curJsPosData = jsPosDataRef.current;
-            const curJsDepthData = jsDepthDataRef.current;
+        const renderLoop = (time: number) => {
+            animState.animFrameId = requestAnimationFrame(renderLoop);
+            if (document.hidden) return;
 
-            if (document.hidden) {
-                return;
-            }
-
-            if (!curGl || !curCnv || !curPosBuf || curPosAttr === -1 ||
-                !curDepthBuf || curDepthAttr === -1 ||
-                !curJsPosData || !curJsDepthData ||
-                curCnv.width === 0 || curCnv.height === 0) return;
-
-            if (time - lastPtUpdateRef.current > perfParams.PT_UPDATE_MS) {
-                lastPtUpdateRef.current = time;
-                if (addingPtsRef.current) {
-                    if (ptsRef.current.length < maxPtsRef.current) {
-                        if (Math.random() * 100 < perfParams.ADD_PT_PROB) {
-                            let centroidAdded = false;
-                            if (ptsRef.current.length > 3) {
-                                try {
-                                    const dln = Delaunay.from(ptsRef.current);
-                                    const tris: Point[][] = Array.from(dln.trianglePolygons());
-                                    if (tris.length > 0) {
-                                        const tgtTri = tris[Math.floor(Math.random() * tris.length)];
-                                        if (tgtTri && tgtTri.length === 3) {
-                                            const [p0, p1, p2] = tgtTri;
-                                            if (p0 && p1 && p2) {
-                                                const area = 0.5 * Math.abs(p0[0] * (p1[1] - p2[1]) + p1[0] * (p2[1] - p0[1]) + p2[0] * (p0[1] - p1[1]));
-                                                if (Number.isFinite(area) && area > MIN_TRI_AREA) {
-                                                    const centroid = getCentroid(tgtTri);
-                                                    if (Number.isFinite(centroid[0]) && centroid[0] > 0 && centroid[0] < curCnv.width / (window.devicePixelRatio || 1) &&
-                                                        Number.isFinite(centroid[1]) && centroid[1] > 0 && centroid[1] < curCnv.height / (window.devicePixelRatio || 1)) {
-                                                        ptsRef.current.push(centroid);
-                                                        centroidAdded = true;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                } catch (e) {
-                                    console.log("Delaunay triangulation failed:", e);
-                                }
-                            }
-                            if (!centroidAdded) {
-                                const mrg = Math.min(curCnv.width / (window.devicePixelRatio || 1), curCnv.height / (window.devicePixelRatio || 1)) * 0.05;
-                                const rx = mrg + Math.random() * (curCnv.width / (window.devicePixelRatio || 1) - 2 * mrg);
-                                const ry = mrg + Math.random() * (curCnv.height / (window.devicePixelRatio || 1) - 2 * mrg);
-                                ptsRef.current.push([rx, ry]);
-                            }
-                        }
-                    } else {
-                        addingPtsRef.current = false;
+            if (isDesktop && time - animState.lastPtUpdate > perfParams.PT_UPDATE_MS) {
+                animState.lastPtUpdate = time;
+                let didChange = false;
+                if (animState.addingPts) {
+                    if (animState.pts.length < animState.maxPts && Math.random() * 100 < perfParams.ADD_PT_PROB) {
+                        const w = cnv.width / (window.devicePixelRatio || 1),
+                            h = cnv.height / (window.devicePixelRatio || 1);
+                        animState.pts.push([Math.random() * w, Math.random() * h]);
+                        didChange = true;
+                    } else if (animState.pts.length >= animState.maxPts) {
+                        animState.addingPts = false;
                     }
                 } else {
-                    if (ptsRef.current.length > minPtsRef.current) {
+                    if (animState.pts.length > animState.minPts && Math.random() * 100 < perfParams.RM_PT_PROB) {
                         for (let i = 0; i < perfParams.RM_PTS_PER_TICK; i++) {
-                            if (ptsRef.current.length > minPtsRef.current && ptsRef.current.length > INIT_BOUNDARY_PTS) {
-                                ptsRef.current.pop();
-                            } else break;
+                            if (animState.pts.length > animState.minPts && animState.pts.length > INIT_BOUNDARY_PTS) {
+                                animState.pts.pop();
+                                didChange = true;
+                            }
                         }
-                    } else {
-                        addingPtsRef.current = true;
+                    } else if (animState.pts.length <= animState.minPts) {
+                        animState.addingPts = true;
                         randomizePtTgts();
                     }
                 }
-                ptsChangedRef.current = true;
+                if (didChange) animState.ptsChanged = true;
             }
-
-            curGl.uniform2f(resUniRef.current, curCnv.width, curCnv.height);
-            curGl.uniform4f(clrUniRef.current, 210 / 255, 210 / 255, 210 / 255, 1.0);
-
-            if (ptsChangedRef.current || cachePosRef.current.length === 0) {
-                const newPos: number[] = [];
-                const newDepths: number[] = [];
-                let segCount = 0;
-
-                if (ptsRef.current.length > 3) {
-                    try {
-                        const dln = Delaunay.from(ptsRef.current);
-                        const cnvW = curCnv.width / (window.devicePixelRatio || 1);
-                        const cnvH = curCnv.height / (window.devicePixelRatio || 1);
-                        const expFactor = Math.max(cnvW, cnvH) * 0.1;
-                        const voroBounds: [number, number, number, number] = [-expFactor, -expFactor, cnvW + expFactor, cnvH + expFactor];
-                        const voro = dln.voronoi(voroBounds);
-                        const style = DRAW_STYLES[styleIdx];
-
-                        for (const vCell of voro.cellPolygons()) {
-                            if (!vCell || vCell.length < 3) continue;
-                            const vCentroid = getCentroid(vCell);
-                            if (!Number.isFinite(vCentroid[0]) || !Number.isFinite(vCentroid[1])) continue;
-                            const vPerim = getPolyPerim(vCell);
-                            if (!Number.isFinite(vPerim) || vPerim === 0) continue;
-
-                            let effMaxLayers = style.maxLayers;
-                            if (style.scaleMode !== "none") {
-                                effMaxLayers = Math.min(2 + (Math.floor(vPerim) % 18), style.maxLayers);
-                                effMaxLayers = Math.max(effMaxLayers, 1);
-                            }
-
-                            for (let i = 0; i < effMaxLayers; i++) {
-                                const normDepth = style.maxLayers > 1 ? i / (style.maxLayers - 1) : 0.0;
-                                let scl: number;
-
-                                if (style.scaleMode === "linear") {
-                                    scl = 1.0 - i * (style.scaleStepLinear || 0.1);
-                                    if (scl < 0.05) break;
-                                } else if (style.scaleMode === "exp") {
-                                    scl = 1.0 / (i + 1);
-                                    if (i > 0 && scl < 0.05) break;
-                                } else {
-                                    scl = 1.0;
-                                }
-
-                                if (style.cutoffVolMul && i > 0 && scl < 1 &&
-                                    vPerim * scl < (cnvW * cnvH * style.cutoffVolMul)) break;
-
-                                const ang = style.rotate ? (1 - scl) * Math.PI / 2 * (style.scaleMode === 'exp' ? i : 1) : 0;
-                                const tfCell = transformPoly(vCell, vCentroid, scl, ang);
-                                const dpr = window.devicePixelRatio || 1;
-
-                                for (let j = 0; j < tfCell.length; j++) {
-                                    if (segCount >= MAX_SEGS ||
-                                        newPos.length + 4 > MAX_POS_FLOATS ||
-                                        newDepths.length + 2 > MAX_DEPTH_FLOATS) break;
-
-                                    const p1 = tfCell[j];
-                                    const p2 = tfCell[(j + 1) % tfCell.length];
-                                    if (Number.isFinite(p1[0]) && Number.isFinite(p1[1]) && Number.isFinite(p2[0]) && Number.isFinite(p2[1])) {
-                                        newPos.push(p1[0] * dpr, p1[1] * dpr, p2[0] * dpr, p2[1] * dpr);
-                                        newDepths.push(normDepth, normDepth);
-                                        segCount++;
-                                    }
-                                }
-                                if (segCount >= MAX_SEGS || newPos.length + 4 > MAX_POS_FLOATS || newDepths.length + 2 > MAX_DEPTH_FLOATS) break;
-                                if (style.scaleMode === "none") break;
-                            }
-                            if (segCount >= MAX_SEGS || newPos.length + 4 > MAX_POS_FLOATS || newDepths.length + 2 > MAX_DEPTH_FLOATS) break;
-                        }
-                    } catch (e) {
-                        console.log("Delaunay triangulation failed:", e);
-                    }
-                }
-                cachePosRef.current = newPos;
-                cacheDepthRef.current = newDepths;
-                ptsChangedRef.current = false;
-            }
-
-            const finalPos = cachePosRef.current;
-            const finalDepths = cacheDepthRef.current;
-            const posFloatsLen = finalPos.length;
-            const vertCount = posFloatsLen / 2;
-
-            curGl.clear(curGl.COLOR_BUFFER_BIT);
-
-            if (vertCount > 0) {
-                for (let i = 0; i < posFloatsLen; i++) curJsPosData[i] = finalPos[i];
-                curGl.bindBuffer(curGl.ARRAY_BUFFER, curPosBuf);
-                curGl.bufferSubData(curGl.ARRAY_BUFFER, 0, curJsPosData.subarray(0, posFloatsLen));
-                curGl.vertexAttribPointer(curPosAttr, 2, curGl.FLOAT, false, 0, 0);
-
-                const depthFloatsLen = finalDepths.length;
-                for (let i = 0; i < depthFloatsLen; i++) curJsDepthData[i] = finalDepths[i];
-                curGl.bindBuffer(curGl.ARRAY_BUFFER, curDepthBuf);
-                curGl.bufferSubData(curGl.ARRAY_BUFFER, 0, curJsDepthData.subarray(0, depthFloatsLen));
-                curGl.vertexAttribPointer(curDepthAttr, 1, curGl.FLOAT, false, 0, 0);
-
-                curGl.drawArrays(curGl.LINES, 0, vertCount);
-            } else {
-                curGl.drawArrays(curGl.LINES, 0, 0);
-            }
+            draw();
         };
-        animFrameRef.current = requestAnimationFrame(render);
 
-        const debouncedResize = () => {
-            handleResize();
-        };
+        animState.animFrameId = requestAnimationFrame(renderLoop);
+
+        const debouncedResize = () => handleResize();
         window.addEventListener("resize", debouncedResize);
-
         const handleClick = () => {
-            setStyleIdx((prev) => (prev + 1) % DRAW_STYLES.length);
-            ptsChangedRef.current = true;
+            setStyleIdx(prev => (prev + 1) % DRAW_STYLES.length);
+            animState.ptsChanged = true;
         };
         cnv.addEventListener("click", handleClick);
 
         return () => {
-            if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+            if (animState.animFrameId) cancelAnimationFrame(animState.animFrameId);
             window.removeEventListener("resize", debouncedResize);
-            const curCnv = cnvRef.current;
-            if (curCnv) curCnv.removeEventListener("click", handleClick);
-
-            const glClean = glRef.current;
-            if (glClean) {
-                if (progRef.current) glClean.deleteProgram(progRef.current);
-                if (posBufRef.current) glClean.deleteBuffer(posBufRef.current);
-                if (depthBufRef.current) glClean.deleteBuffer(depthBufRef.current);
-                if (vertShader) glClean.deleteShader(vertShader);
-                if (fragShader) glClean.deleteShader(fragShader);
-            }
+            cnv.removeEventListener("click", handleClick);
         };
-    }, [initPts, randomizePtTgts, styleIdx, perfParams]);
+    }, [isDesktop, perfParams, draw]);
 
-    return (
-        <div className="absolute inset-0 bg-[#1e1e1e]">
+    return (<div className="absolute inset-0 bg-[#1e1e1e]">
             <div
                 className="fixed inset-0 transition-opacity duration-700 ease-in-out"
                 style={{opacity: backgroundOpacity}}
@@ -531,7 +416,6 @@ const Background = ({
             <div className={`relative w-full h-full z-10 ${className} pointer-events-none`}>
                 {children}
             </div>
-        </div>
-    );
+        </div>);
 };
 export default Background;
