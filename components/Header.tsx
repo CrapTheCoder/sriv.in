@@ -103,25 +103,32 @@ export default function Header() {
 
     // Mobile-specific animation properties to disable expensive operations
     const getAnimateProps = () => {
+        const isScrolledAndMobile = isScrolled && isMobile;
+
+        // Use a semi-transparent background on mobile instead of blur
+        const backgroundColor = isScrolledAndMobile
+            ? 'hsl(0 0% 5% / 0.75)' // Example: 75% opaque dark background
+            : 'var(--fully-transparent)';
+
         const desktopProps = {
             width: isScrolled ? (isMobile ? "95%" : "80%") : "100%",
             borderRadius: isScrolled ? "70px" : "0px",
             backdropFilter: isScrolled ? "blur(3rem)" : "blur(0rem)",
+            backgroundColor: "var(--fully-transparent)",
         };
 
         const mobileProps = {
-            width: "95%", // Keep it fixed on mobile
-            borderRadius: "70px", // Keep it fixed on mobile
-            backdropFilter: "blur(0rem)", // Completely disable blur on mobile
+            width: "95%",
+            borderRadius: "70px",
+            backdropFilter: "blur(0rem)", // No blur
+            backgroundColor: isScrolled ? 'hsl(0 0% 5% / 0.75)' : 'var(--fully-transparent)',
         };
 
         return {
-            ...(isMobile && isScrolled ? mobileProps : desktopProps),
+            ...(isMobile ? mobileProps : desktopProps),
             boxShadow: "0px 0px 0px var(--shadow)",
-            backgroundColor: "var(--fully-transparent)",
         };
     };
-
 
     return (
         <div className="relative w-full">

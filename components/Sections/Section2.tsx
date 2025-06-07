@@ -39,7 +39,7 @@ const Section2 = ({className = "", ref}: SectionProps) => {
                     "mx-auto",
                     "py-8 md:py-12",
                     "px-8 sm:px-12 md:px-16",
-                    isDesktop && "backdrop-blur-[3rem]",
+                    isDesktop ? "backdrop-blur-[3rem]" : "bg-background/80",
                     "rounded-[70px]",
                     "shadow-2xl",
                     "pointer-events-auto",
