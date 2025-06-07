@@ -75,8 +75,6 @@ const MOBILE_PARAMS = {
 };
 
 
-const MIN_TRI_AREA = 15;
-
 const getCentroid = (poly: Point[]): Point => {
     if (!poly || poly.length === 0) return [0, 0];
     let x = 0, y = 0;
