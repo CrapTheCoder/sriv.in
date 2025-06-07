@@ -4,6 +4,7 @@ import Section from "./Section";
 import SocialLinks from "../SocialLinks";
 import {SlideFadeIn} from "../SlideFadeIn";
 import Background from "../Background";
+import {useCustomCursor} from "@/components/providers/CustomCursorProvider";
 
 type SectionProps = {
     className?: string;
@@ -30,22 +31,39 @@ const SubText = () => {
 };
 
 const Section1 = ({className = "", ref}: SectionProps) => {
+    const {isCursorVisible: isDesktop} = useCustomCursor();
+
+    const content = (
+        <>
+            <h1
+                className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl 2xl:text-9xl font-bold font-header tracking-[.1rem] flex gap-x-2 md:gap-x-3 xl:gap-x-4 pointer-events-auto"
+                data-text-cursor
+            >
+                <SlideFadeIn delay={0.12}>Srivaths</SlideFadeIn>
+                <SlideFadeIn delay={0.06}>P</SlideFadeIn>
+            </h1>
+
+            <SubText/>
+            <SocialLinks className="pointer-events-auto"/>
+        </>
+    );
+
+    const containerClassName = "flex flex-col justify-center items-center align-middle text-shadow-lg/100 text-yellow-200";
+
     return (
         <Section className={`${className}`} ref={ref}>
             <div>
-                <Background
-                    className="flex flex-col justify-center items-center align-middle text-shadow-lg/100 text-yellow-200">
-                    <h1
-                        className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl 2xl:text-9xl font-bold font-header tracking-[.1rem] flex gap-x-2 md:gap-x-3 xl:gap-x-4 pointer-events-auto"
-                        data-text-cursor
-                    >
-                        <SlideFadeIn delay={0.12}>Srivaths</SlideFadeIn>
-                        <SlideFadeIn delay={0.06}>P</SlideFadeIn>
-                    </h1>
-
-                    <SubText/>
-                    <SocialLinks className="pointer-events-auto"/>
-                </Background>
+                {isDesktop ? (
+                    <Background className={containerClassName}>
+                        {content}
+                    </Background>
+                ) : (
+                    <div className="absolute inset-0 bg-[#1e1e1e]">
+                        <div className={`relative w-full h-full z-10 ${containerClassName} pointer-events-none`}>
+                            {content}
+                        </div>
+                    </div>
+                )}
             </div>
         </Section>
     );

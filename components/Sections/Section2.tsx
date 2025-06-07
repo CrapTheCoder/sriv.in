@@ -8,6 +8,7 @@ import {DisplayLanguages, DisplayTechnologies} from "../Skills";
 import {SlideFadeIn} from "../SlideFadeIn";
 import {useEffect, useState} from "react";
 import Background from "@/components/Background";
+import { useCustomCursor } from "@/components/providers/CustomCursorProvider";
 
 type SectionProps = {
     className?: string;
@@ -15,6 +16,8 @@ type SectionProps = {
 };
 
 const Section2 = ({className = "", ref}: SectionProps) => {
+    const { isCursorVisible: isDesktop } = useCustomCursor();
+
     const [direction, setDirection] = useState<"left" | "right">("left");
     useEffect(() => {
         const updateDirection = () => {
@@ -27,7 +30,7 @@ const Section2 = ({className = "", ref}: SectionProps) => {
 
     return (
         <Section className={`${className} border-t mb-16`} ref={ref} sectionName="About">
-            <Background />
+            {isDesktop && <Background />}
 
             <div
                 className="

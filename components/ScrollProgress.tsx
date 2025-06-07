@@ -9,27 +9,40 @@ export default function ScrollProgress() {
 
     useEffect(() => {
         const checkScrollable = () => {
-            const docHeight = document.documentElement.scrollHeight;
-            const viewH = window.innerHeight;
-            setScrollable(docHeight > viewH);
+            if (typeof window !== "undefined") {
+                const docHeight = document.documentElement.scrollHeight;
+                const viewH = window.innerHeight;
+                setScrollable(docHeight > viewH);
+            }
         };
-        checkScrollable();
+
+        // Delay initial check to allow mobile layout to settle
+        const timeoutId = setTimeout(checkScrollable, 150);
+
         window.addEventListener("resize", checkScrollable);
-        return () => window.removeEventListener("resize", checkScrollable);
+        return () => {
+            clearTimeout(timeoutId);
+            window.removeEventListener("resize", checkScrollable);
+        }
     }, []);
 
     useEffect(() => {
         if (!scrollable) return;
 
         const handleScroll = () => {
-            const scrollY = window.scrollY;
-            const docHeight = document.documentElement.scrollHeight;
-            const viewH = window.innerHeight;
-            const raw = scrollY / (docHeight - viewH);
-            setProgress(Math.min(Math.max(raw, 0), 1));
+            const scrollY = window.scrollY; //
+            const docHeight = document.documentElement.scrollHeight; //
+            const viewH = window.innerHeight; //
+            // Add a 1px tolerance for mobile browser calculation quirks
+            if (scrollY + viewH >= docHeight - 1) {
+                setProgress(1);
+            } else {
+                const raw = scrollY / (docHeight - viewH);
+                setProgress(Math.min(Math.max(raw, 0), 1));
+            }
         };
 
-        window.addEventListener("scroll", handleScroll);
+        window.addEventListener("scroll", handleScroll, { passive: true });
         handleScroll();
         return () => window.removeEventListener("scroll", handleScroll);
     }, [scrollable]);
