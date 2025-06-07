@@ -101,6 +101,28 @@ export default function Header() {
         [formationDelayDuration, effectDelayDuration]
     );
 
+    // Mobile-specific animation properties to disable expensive operations
+    const getAnimateProps = () => {
+        const desktopProps = {
+            width: isScrolled ? (isMobile ? "95%" : "80%") : "100%",
+            borderRadius: isScrolled ? "70px" : "0px",
+            backdropFilter: isScrolled ? "blur(3rem)" : "blur(0rem)",
+        };
+
+        const mobileProps = {
+            width: "95%", // Keep it fixed on mobile
+            borderRadius: "70px", // Keep it fixed on mobile
+            backdropFilter: "blur(0rem)", // Completely disable blur on mobile
+        };
+
+        return {
+            ...(isMobile && isScrolled ? mobileProps : desktopProps),
+            boxShadow: "0px 0px 0px var(--shadow)",
+            backgroundColor: "var(--fully-transparent)",
+        };
+    };
+
+
     return (
         <div className="relative w-full">
             {/* Placeholder to maintain layout space */}
@@ -109,13 +131,7 @@ export default function Header() {
             <motion.header
                 className="fixed top-0 left-0 right-0 z-50 mx-auto py-1 sm:py-1.5 translate-y-[8px] sm:translate-y-[10px]"
                 initial={false}
-                animate={{
-                    width: isScrolled ? (isMobile ? "95%" : "80%") : "100%",
-                    borderRadius: isScrolled ? "70px" : "0px",
-                    boxShadow: "0px 0px 0px var(--shadow)",
-                    backgroundColor: "var(--fully-transparent)",
-                    backdropFilter: isScrolled ? "blur(3rem)" : "blur(0rem)",
-                }}
+                animate={getAnimateProps()}
                 transition={transition}
                 style={{
                     left: "50%",
