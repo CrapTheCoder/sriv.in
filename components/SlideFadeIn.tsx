@@ -26,8 +26,14 @@ export function SlideFadeIn({
     direction?: SlideDirection;
     slideOffset?: number;
 }) {
-    const ref = useRef(null);
     const { isCursorVisible: isDesktop } = useCustomCursor();
+
+    // On mobile, just render the children without any animation wrappers.
+    if (!isDesktop) {
+        return <div className={className}>{children}</div>;
+    }
+
+    const ref = useRef(null);
     const isInView = useInView(ref, {
         margin:
             `${inMargin} 0px ${outMargin} 0px` as `${MarginValue} ${MarginValue} ${MarginValue} ${MarginValue}`,
