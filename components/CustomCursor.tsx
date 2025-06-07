@@ -1,7 +1,7 @@
 "use client";
 
 import React, {useCallback, useEffect, useMemo, useRef, useState,} from "react";
-import {motion, useSpring} from "motion/react";
+import {motion, useSpring, AnimatePresence} from "motion/react";
 import {useCustomCursor} from "./providers/CustomCursorProvider";
 import {GlowEffect} from "./motion-primitives/glow-effect";
 
@@ -531,12 +531,58 @@ const CustomCursor: React.FC = () => {
         };
     }, [scale, subcursorScale, isOverSubcursor, detectElements, isCursorVisible]);
 
+    const glowVariants = {
+        initial: { opacity: 0, scale: 0.8 },
+        animate: { opacity: 1, scale: 1, transition: { duration: 0.3, ease: 'easeOut' } },
+        exit: { opacity: 0, scale: 0.5, transition: { duration: 0.2, ease: 'easeIn' } },
+    };
+
     if (!isCursorVisible) return null;
 
     return (
         <>
+            <AnimatePresence>
+                {isClickable && (
+                    <motion.div
+                        key="cursor-glow"
+                        variants={cursorVariants}
+                        animate={getCursorVariant()}
+                        transition={{
+                            duration: 0.2,
+                            ease: "easeOut",
+                            borderRadius: {duration: 0.2, ease: "easeOut"},
+                            ...((headerLinkRect || genericHoverRect) && {
+                                type: "spring",
+                                stiffness: 150,
+                                damping: 15,
+                                mass: 0.6,
+                            }),
+                        }}
+                        className="fixed pointer-events-none z-[998] transform -translate-x-1/2 -translate-y-1/2"
+                        style={{ left: x, top: y, scale }}
+                    >
+                        <motion.div
+                            variants={glowVariants}
+                            initial="initial"
+                            animate="animate"
+                            exit="exit"
+                            className="w-full h-full"
+                        >
+                            <GlowEffect
+                                colors={["#fff085"]}
+                                mode="colorShift"
+                                blur="strongest"
+                                duration={4}
+                                scale={1.1}
+                                className="h-full w-full"
+                            />
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             <motion.div
-                className="fixed pointer-events-none z-[999] transform -translate-x-1/2 -translate-y-1/2 transition-transform duration-100 ease-out bg-white ring-white"
+                className="fixed pointer-events-none z-[999] transform -translate-x-1/2 -translate-y-1/2 bg-white"
                 style={{
                     left: x,
                     top: y,
@@ -557,45 +603,6 @@ const CustomCursor: React.FC = () => {
                     }),
                 }}
             >
-                <motion.div
-                    className="absolute -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2 scale-110"
-                    initial={{opacity: 0}}
-                    animate={{
-                        opacity: isClickable ? 1 : 0,
-                        width:
-                            isClickable && !genericHoverRect && !hoveredTooltip?.hovered
-                                ? cursorVariants[getCursorVariant()].width * 8
-                                : cursorVariants[getCursorVariant()].width,
-                        height:
-                            isClickable && !genericHoverRect && !hoveredTooltip?.hovered
-                                ? cursorVariants[getCursorVariant()].height * 1.5
-                                : cursorVariants[getCursorVariant()].height,
-                        borderRadius: cursorVariants[getCursorVariant()].borderRadius,
-                        scale: 1,
-                    }}
-                    transition={{
-                        duration: 0.3,
-                        ease: "easeInOut",
-                        borderRadius: {duration: 0.2, ease: "easeOut"},
-                        ...((headerLinkRect || genericHoverRect) && {
-                            type: "spring",
-                            stiffness: 150,
-                            damping: 15,
-                            mass: 0.8,
-                        }),
-                    }}
-                >
-                    <GlowEffect
-                        colors={[
-                            "#fff085"
-                        ]}
-                        mode="colorShift"
-                        blur="strongest"
-                        duration={4}
-                        scale={1}
-                        className="h-full w-full"
-                    />
-                </motion.div>
                 {hoveredTooltip?.hovered && (
                     <motion.div
                         variants={textVariants}
@@ -608,6 +615,7 @@ const CustomCursor: React.FC = () => {
                     </motion.div>
                 )}
             </motion.div>
+
             {isOverSubcursor && (
                 <motion.div
                     className="fixed pointer-events-none z-[999] transform -translate-x-1/2 -translate-y-1/2 bg-white"

@@ -28,7 +28,7 @@ const technologies: skills = [
 
 export const DisplayLanguages = () => {
     return (
-        <div className="flex flex-col items-center px-3 w-95 sm:w-120 md:w-90 lg:w-120 xl:w-130">
+        <div className="flex flex-col items-center px-3 w-full">
             <h3 className="font-header text-3xl" data-text-cursor>
                 Languages
             </h3>
@@ -39,7 +39,7 @@ export const DisplayLanguages = () => {
 
 export const DisplayTechnologies = () => {
     return (
-        <div className="flex flex-col items-center px-3 w-95 sm:w-120 md:w-83 lg:w-100 xl:w-120">
+        <div className="flex flex-col items-center px-3 w-full">
             <h3 className="font-header text-3xl" data-text-cursor>
                 Technologies
             </h3>

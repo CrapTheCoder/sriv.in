@@ -4,11 +4,13 @@ import Section from "./Section";
 import Experience from "../Experience";
 import AboutMe from "../AboutMe";
 import Education from "../Education";
+import Profiles from "@/components/Profiles";
 import {DisplayLanguages, DisplayTechnologies} from "../Skills";
 import {SlideFadeIn} from "../SlideFadeIn";
 import {useEffect, useState} from "react";
 import { useCustomCursor } from "@/components/providers/CustomCursorProvider";
 import { cn } from "@/lib/utils";
+import Background from "@/components/Background";
 
 type SectionProps = {
     className?: string;
@@ -30,7 +32,9 @@ const Section2 = ({className = "", ref}: SectionProps) => {
 
     return (
         <Section className={`${className}`} ref={ref} sectionName="About">
-            <div className="relative z-10 w-full h-full flex flex-col justify-center items-center py-12 md:py-20 px-4 md:px-8">
+            <Background staticMode={!isDesktop} />
+
+            <div className="relative z-10 w-full h-full flex flex-col justify-center items-center py-12 md:py-20 px-4 md:px-8 pointer-events-none">
                 <div
                     className={cn(
                         "w-full max-w-[90rem]",
@@ -40,14 +44,14 @@ const Section2 = ({className = "", ref}: SectionProps) => {
                         isDesktop ? "backdrop-blur-[3rem]" : "bg-background/80",
                         "rounded-[70px]",
                         "shadow-2xl",
-                        "pointer-events-auto"
                     )}
                 >
-                    <div className="w-full">
+                    <div className="w-full pointer-events-auto">
                         <div
                             className="flex flex-col md:flex-row justify-center gap-x-10 lg:gap-x-16 md:pt-12 md:items-start overflow-hidden">
                             <div className="flex flex-col items-center md:items-start gap-y-4 md:w-1/2 mb-4 md:mb-0">
                                 <Experience/>
+                                <Profiles/>
                             </div>
                             <div className="flex flex-col items-center md:items-start gap-y-4 md:w-1/2 md:mb-0">
                                 <Education/>

@@ -167,7 +167,7 @@ export default function Footer() {
                         className={`
                             fixed bottom-[10px] flex justify-center w-fit
                             text-yellow-200 drop-shadow-sm drop-shadow-yellow-50
-                            pointer-events-auto
+                            pointer-events-auto z-[100]
                         `}
                         variants={arrowVariants}
                         initial="hidden"

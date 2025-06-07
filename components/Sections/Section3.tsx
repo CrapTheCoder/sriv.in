@@ -8,6 +8,7 @@ import SmallTextPills from "@/components/SmallTextPills";
 import Section from "./Section";
 import {useCustomCursor} from "../providers/CustomCursorProvider";
 import {cn} from "@/lib/utils";
+import Background from "@/components/Background";
 
 interface MonthYear {
     month: number;
@@ -180,8 +181,10 @@ const Section3 = ({className = "", ref}: SectionProps) => {
     const {isCursorVisible: isDesktop} = useCustomCursor();
     return (
         <Section className={`${className}`} ref={ref} sectionName="Projects">
+            <Background staticMode={!isDesktop} />
+
             <div
-                className="relative z-10 w-full h-full flex flex-col justify-center items-center py-12 md:py-20 px-4 md:px-8">
+                className="relative z-10 w-full h-full flex flex-col justify-center items-center py-12 md:py-20 px-4 md:px-8 pointer-events-none">
                 <div
                     className={cn(
                         "w-fit",
@@ -191,7 +194,6 @@ const Section3 = ({className = "", ref}: SectionProps) => {
                         isDesktop ? "backdrop-blur-[3rem]" : "bg-background/80",
                         "rounded-[70px]",
                         "shadow-2xl",
-                        "pointer-events-auto"
                     )}
                 >
                     <h1
