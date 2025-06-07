@@ -7,21 +7,24 @@ type SectionProps = {
     sectionName?: string;
 };
 
-const Section = ({
-                     className = "",
-                     children,
-                     ref,
-                     sectionName = "NAME NOT PROVIDED",
-                 }: SectionProps) => {
-    return (
-        <div
-            ref={ref}
-            data-section-name={sectionName}
-            className={`relative snap-none sm:snap-start min-h-screen flex flex-col justify-center items-center bg-background py-3 ${className}`}
-        >
-            {children}
-        </div>
-    );
-};
+const Section = React.forwardRef<HTMLDivElement, SectionProps>(
+    ({
+         className = "",
+         children,
+         sectionName = "NAME NOT PROVIDED",
+     }, ref) => {
+        return (
+            <div
+                ref={ref}
+                data-section-name={sectionName}
+                className={`relative min-h-screen flex flex-col justify-center items-center snap-none sm:snap-start ${className}`}
+            >
+                {children}
+            </div>
+        );
+    }
+);
+
+Section.displayName = "Section";
 
 export default Section;

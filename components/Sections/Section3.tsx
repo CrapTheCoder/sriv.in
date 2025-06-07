@@ -7,6 +7,8 @@ import Link from "next/link";
 import SmallTextPills from "@/components/SmallTextPills";
 import Section from "./Section";
 import Background from "@/components/Background";
+import { useCustomCursor } from "../providers/CustomCursorProvider";
+import { cn } from "@/lib/utils";
 
 interface MonthYear {
     month: number;
@@ -77,42 +79,39 @@ const monthNames = [
     "Dec",
 ];
 
-// Format a MonthYear as "Month Year"
 function formatMonthYear(d: MonthYear): string {
     const name = monthNames[d.month - 1] || "";
     return `${name} ${d.year}`;
 }
 
-// Format a ProjectDate, handling "Present" and ranges
 function formatProjectDate(date: ProjectDate): string {
     if (date === "Present") {
         return "Present";
     }
     if (typeof date === "object" && "start" in date) {
         const {start, end} = date;
-        // If both in same year, omit repeating the year
+
         if (end !== "Present" && end.year === start.year) {
             const startName = monthNames[start.month - 1] || "";
             const endName = monthNames[(end as MonthYear).month - 1] || "";
             return `${startName} — ${endName} ${start.year}`;
         }
-        // Otherwise, show full Month Year – Month Year or Present
+
         const startStr = formatMonthYear(start);
         const endStr =
             end === "Present" ? "Present" : formatMonthYear(end as MonthYear);
         return `${startStr} — ${endStr}`;
     }
-    // Single month/year
+
     return formatMonthYear(date as MonthYear);
 }
 
-// ProjectCard component
 interface ProjectCardProps {
     project: Project;
 }
 
 const ProjectCard: React.FC<ProjectCardProps> = ({project}) => {
-    const {title, shortDescription, date, github, link, tags} = project; // Added imageUrl
+    const {title, shortDescription, date, github, link, tags} = project;
 
     return (
         <div
@@ -179,24 +178,26 @@ type SectionProps = {
 };
 
 const Section3 = ({className = "", ref}: SectionProps) => {
+    const { isCursorVisible: isDesktop } = useCustomCursor();
     return (
         <Section className={`${className} border-t`} ref={ref} sectionName="Projects">
             <Background
                 className="flex flex-col justify-center items-center align-middle text-shadow-lg/100 text-white py-12 md:py-20"
+                staticMode={!isDesktop}
             >
                 <div
-                    className="
-                        w-fit
-                        mx-auto
-                        py-8 md:py-12
-                        px-8 sm:px-12 md:px-16
-                        backdrop-blur-[3rem]
-                        rounded-[70px]
-                        shadow-2xl
-                        pointer-events-auto
-                        relative
-                        z-10
-                    "
+                    className={cn(
+                        "w-fit",
+                        "mx-auto",
+                        "py-8 md:py-12",
+                        "px-8 sm:px-12 md:px-16",
+                        isDesktop ? "backdrop-blur-[3rem]" : "bg-background/80",
+                        "rounded-[70px]",
+                        "shadow-2xl",
+                        "pointer-events-auto",
+                        "relative",
+                        "z-10"
+                    )}
                 >
                     <h1
                         className="text-4xl sm:text-5xl md:text-5xl lg:text-6xl xl:text-7xl font-bold font-header tracking-[.1rem] pointer-events-auto text-center"

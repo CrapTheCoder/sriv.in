@@ -5,6 +5,7 @@ import {Terminal} from "lucide-react";
 import {motion, useMotionValueEvent, useScroll} from "motion/react";
 import Link from "next/link";
 import HeaderLinks from "./HeaderLinks";
+import {useCustomCursor} from "./providers/CustomCursorProvider";
 
 const Logo = ({
                   isScrolled,
@@ -61,7 +62,9 @@ const Logo = ({
 };
 
 export default function Header() {
+    const {isCursorVisible: isDesktop} = useCustomCursor();
     const [isMobile, setIsMobile] = useState(false);
+
     useEffect(() => {
         const updateSize = () => {
             setIsMobile(window.innerWidth < 640);
@@ -101,21 +104,34 @@ export default function Header() {
         [formationDelayDuration, effectDelayDuration]
     );
 
+    const getAnimateProps = () => {
+        const commonProps = {
+            width: isScrolled ? (isMobile ? "95%" : "80%") : "100%",
+            borderRadius: isScrolled ? "70px" : "0px",
+            boxShadow: "0px 0px 0px var(--shadow)",
+        };
+
+        if (!isDesktop) {
+            return {
+                ...commonProps,
+                backgroundColor: isScrolled ? 'hsl(0 0% 5% / 0.75)' : 'var(--fully-transparent)',
+                backdropFilter: 'blur(0rem)',
+            };
+        }
+
+        return {
+            ...commonProps,
+            backgroundColor: "var(--fully-transparent)",
+            backdropFilter: isScrolled ? "blur(3rem)" : "blur(0rem)",
+        };
+    };
+
     return (
         <div className="relative w-full">
-            {/* Placeholder to maintain layout space */}
-            {/* <div className="h-20" /> */}
-
             <motion.header
                 className="fixed top-0 left-0 right-0 z-50 mx-auto py-1 sm:py-1.5 translate-y-[8px] sm:translate-y-[10px]"
                 initial={false}
-                animate={{
-                    width: isScrolled ? (isMobile ? "95%" : "80%") : "100%",
-                    borderRadius: isScrolled ? "70px" : "0px",
-                    boxShadow: "0px 0px 0px var(--shadow)",
-                    backgroundColor: "var(--fully-transparent)",
-                    backdropFilter: isScrolled ? "blur(3rem)" : "blur(0rem)",
-                }}
+                animate={getAnimateProps()}
                 transition={transition}
                 style={{
                     left: "50%",

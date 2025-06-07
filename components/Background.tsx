@@ -2,7 +2,6 @@
 
 import React, {useCallback, useEffect, useRef, useState} from "react";
 import {Delaunay} from "d3-delaunay";
-import {useCustomCursor} from "@/components/providers/CustomCursorProvider";
 
 const VERT_SHADER = `
 attribute vec2 a_pos;
@@ -70,9 +69,9 @@ const MOBILE_PARAMS = {
     MAX_PTS_LOWER: 30,
     MIN_PTS_UPPER: 20,
     MIN_PTS_LOWER: 10,
-    ADD_PT_PROB: 25,
-    PT_UPDATE_MS: 70,
-    RM_PTS_PER_TICK: 1,
+    ADD_PT_PROB: 0,
+    PT_UPDATE_MS: 99999,
+    RM_PTS_PER_TICK: 0,
 };
 
 
@@ -125,10 +124,12 @@ const Background = ({
                         children,
                         className = "",
                         backgroundOpacity = 1,
+                        staticMode = false,
                     }: {
     children: React.ReactNode;
     className?: string;
     backgroundOpacity?: number;
+    staticMode?: boolean;
 }) => {
     const cnvRef = useRef<HTMLCanvasElement>(null);
     const glRef = useRef<WebGLRenderingContext | null>(null);
@@ -161,8 +162,132 @@ const Background = ({
 
     const [styleIdx, setStyleIdx] = useState(0);
     const animFrameRef = useRef<number | null>(null);
-    const { isCursorVisible: isDesktop } = useCustomCursor();
-    const perfParams = isDesktop ? DESKTOP_PARAMS : MOBILE_PARAMS;
+    const perfParams = staticMode ? MOBILE_PARAMS : DESKTOP_PARAMS;
+
+    const draw = useCallback(() => {
+        const curGl = glRef.current;
+        const curCnv = cnvRef.current;
+        const curPosBuf = posBufRef.current;
+        const curPosAttr = posAttrRef.current;
+        const curDepthBuf = depthBufRef.current;
+        const curDepthAttr = depthAttrRef.current;
+        const curJsPosData = jsPosDataRef.current;
+        const curJsDepthData = jsDepthDataRef.current;
+
+        if (!curGl || !curCnv || !curPosBuf || curPosAttr === -1 ||
+            !curDepthBuf || curDepthAttr === -1 ||
+            !curJsPosData || !curJsDepthData ||
+            curCnv.width === 0 || curCnv.height === 0) return;
+
+        curGl.uniform2f(resUniRef.current, curCnv.width, curCnv.height);
+        curGl.uniform4f(clrUniRef.current, 210 / 255, 210 / 255, 210 / 255, 1.0);
+
+        if (ptsChangedRef.current || cachePosRef.current.length === 0) {
+            const newPos: number[] = [];
+            const newDepths: number[] = [];
+            let segCount = 0;
+
+            if (ptsRef.current.length > 3) {
+                try {
+                    const dln = Delaunay.from(ptsRef.current);
+                    const cnvW = curCnv.width / (window.devicePixelRatio || 1);
+                    const cnvH = curCnv.height / (window.devicePixelRatio || 1);
+                    const expFactor = Math.max(cnvW, cnvH) * 0.1;
+                    const voroBounds: [number, number, number, number] = [-expFactor, -expFactor, cnvW + expFactor, cnvH + expFactor];
+                    const voro = dln.voronoi(voroBounds);
+                    const style = DRAW_STYLES[styleIdx];
+
+                    for (const vCell of voro.cellPolygons()) {
+                        if (!vCell || vCell.length < 3) continue;
+                        const vCentroid = getCentroid(vCell);
+                        if (!Number.isFinite(vCentroid[0]) || !Number.isFinite(vCentroid[1])) continue;
+                        const vPerim = getPolyPerim(vCell);
+                        if (!Number.isFinite(vPerim) || vPerim === 0) continue;
+
+                        let effMaxLayers = style.maxLayers;
+                        if (style.scaleMode !== "none") {
+                            effMaxLayers = Math.min(2 + (Math.floor(vPerim) % 18), style.maxLayers);
+                            effMaxLayers = Math.max(effMaxLayers, 1);
+                        }
+
+                        for (let i = 0; i < effMaxLayers; i++) {
+                            const normDepth = style.maxLayers > 1 ? i / (style.maxLayers - 1) : 0.0;
+                            let scl: number;
+
+                            if (style.scaleMode === "linear") {
+                                scl = 1.0 - i * (style.scaleStepLinear || 0.1);
+                                if (scl < 0.05) break;
+                            } else if (style.scaleMode === "exp") {
+                                scl = 1.0 / (i + 1);
+                                if (i > 0 && scl < 0.05) break;
+                            } else {
+                                scl = 1.0;
+                            }
+
+                            if (style.cutoffVolMul && i > 0 && scl < 1 &&
+                                vPerim * scl < (cnvW * cnvH * style.cutoffVolMul)) break;
+
+                            const ang = style.rotate ? (1 - scl) * Math.PI / 2 * (style.scaleMode === 'exp' ? i : 1) : 0;
+                            const tfCell = transformPoly(vCell, vCentroid, scl, ang);
+                            const dpr = window.devicePixelRatio || 1;
+
+                            for (let j = 0; j < tfCell.length; j++) {
+                                if (segCount >= MAX_SEGS ||
+                                    newPos.length + 4 > MAX_POS_FLOATS ||
+                                    newDepths.length + 2 > MAX_DEPTH_FLOATS) break;
+
+                                const p1 = tfCell[j];
+                                const p2 = tfCell[(j + 1) % tfCell.length];
+                                if (Number.isFinite(p1[0]) && Number.isFinite(p1[1]) && Number.isFinite(p2[0]) && Number.isFinite(p2[1])) {
+                                    newPos.push(p1[0] * dpr, p1[1] * dpr, p2[0] * dpr, p2[1] * dpr);
+                                    newDepths.push(normDepth, normDepth);
+                                    segCount++;
+                                }
+                            }
+                            if (segCount >= MAX_SEGS || newPos.length + 4 > MAX_POS_FLOATS || newDepths.length + 2 > MAX_DEPTH_FLOATS) break;
+                            if (style.scaleMode === "none") break;
+                        }
+                        if (segCount >= MAX_SEGS || newPos.length + 4 > MAX_POS_FLOATS || newDepths.length + 2 > MAX_DEPTH_FLOATS) break;
+                    }
+                } catch (e) {
+                    console.log("Delaunay triangulation failed:", e);
+                }
+            }
+            cachePosRef.current = newPos;
+            cacheDepthRef.current = newDepths;
+            ptsChangedRef.current = false;
+        }
+
+        const finalPos = cachePosRef.current;
+        const finalDepths = cacheDepthRef.current;
+        const posFloatsLen = finalPos.length;
+        const vertCount = posFloatsLen / 2;
+
+        curGl.clear(curGl.COLOR_BUFFER_BIT);
+
+        if (vertCount > 0) {
+            for (let i = 0; i < posFloatsLen; i++) curJsPosData[i] = finalPos[i];
+            curGl.bindBuffer(curGl.ARRAY_BUFFER, curPosBuf);
+            curGl.bufferSubData(curGl.ARRAY_BUFFER, 0, curJsPosData.subarray(0, posFloatsLen));
+            curGl.vertexAttribPointer(curPosAttr, 2, curGl.FLOAT, false, 0, 0);
+
+            const depthFloatsLen = finalDepths.length;
+            for (let i = 0; i < depthFloatsLen; i++) curJsDepthData[i] = finalDepths[i];
+            curGl.bindBuffer(curGl.ARRAY_BUFFER, curDepthBuf);
+            curGl.bufferSubData(curGl.ARRAY_BUFFER, 0, curJsDepthData.subarray(0, depthFloatsLen));
+            curGl.vertexAttribPointer(curDepthAttr, 1, curGl.FLOAT, false, 0, 0);
+
+            curGl.drawArrays(curGl.LINES, 0, vertCount);
+        } else {
+            curGl.drawArrays(curGl.LINES, 0, 0);
+        }
+    }, [styleIdx]);
+
+    useEffect(() => {
+        if (staticMode) {
+            draw();
+        }
+    }, [styleIdx, staticMode, draw]);
 
     const randomizePtTgts = useCallback(() => {
         let maxTgt = Math.floor(Math.random() * (perfParams.MAX_PTS_UPPER - perfParams.MAX_PTS_LOWER + 1)) + perfParams.MAX_PTS_LOWER;
@@ -292,7 +417,7 @@ const Background = ({
             } else {
                 const oldSize = prevSizeRef.current;
                 if (oldSize && (oldSize.width !== newW || oldSize.height !== newH)) {
-                    if(oldSize.width > 0 && oldSize.height > 0) {
+                    if (oldSize.width > 0 && oldSize.height > 0) {
                         ptsRef.current = ptsRef.current.map(p => [
                             (p[0] / oldSize.width) * newW,
                             (p[1] / oldSize.height) * newH
@@ -305,189 +430,47 @@ const Background = ({
                     ptsChangedRef.current = true;
                 }
             }
+            if (staticMode) {
+                draw();
+            }
         };
         handleResize();
 
-        const render = (time: number) => {
+        if (!staticMode) {
+            const render = (time: number) => {
+                animFrameRef.current = requestAnimationFrame(render);
+                if (document.hidden) return;
+
+                if (time - lastPtUpdateRef.current > perfParams.PT_UPDATE_MS) {
+                    lastPtUpdateRef.current = time;
+                    if (addingPtsRef.current) {
+                        if (ptsRef.current.length < maxPtsRef.current) {
+                            if (Math.random() * 100 < perfParams.ADD_PT_PROB) {
+                                ptsRef.current.push([Math.random() * cnv.width, Math.random() * cnv.height]);
+                            }
+                        } else {
+                            addingPtsRef.current = false;
+                        }
+                    } else {
+                        if (ptsRef.current.length > minPtsRef.current) {
+                            for (let i = 0; i < perfParams.RM_PTS_PER_TICK; i++) {
+                                if (ptsRef.current.length > minPtsRef.current && ptsRef.current.length > INIT_BOUNDARY_PTS) {
+                                    ptsRef.current.pop();
+                                } else break;
+                            }
+                        } else {
+                            addingPtsRef.current = true;
+                            randomizePtTgts();
+                        }
+                    }
+                    ptsChangedRef.current = true;
+                }
+                draw();
+            };
             animFrameRef.current = requestAnimationFrame(render);
-            const curGl = glRef.current;
-            const curCnv = cnvRef.current;
-            const curPosBuf = posBufRef.current;
-            const curPosAttr = posAttrRef.current;
-            const curDepthBuf = depthBufRef.current;
-            const curDepthAttr = depthAttrRef.current;
-            const curJsPosData = jsPosDataRef.current;
-            const curJsDepthData = jsDepthDataRef.current;
+        }
 
-            if (!curGl || !curCnv || !curPosBuf || curPosAttr === -1 ||
-                !curDepthBuf || curDepthAttr === -1 ||
-                !curJsPosData || !curJsDepthData ||
-                curCnv.width === 0 || curCnv.height === 0) return;
-
-            if (time - lastPtUpdateRef.current > perfParams.PT_UPDATE_MS) {
-                lastPtUpdateRef.current = time;
-                if (addingPtsRef.current) {
-                    if (ptsRef.current.length < maxPtsRef.current) {
-                        if (Math.random() * 100 < perfParams.ADD_PT_PROB) {
-                            let centroidAdded = false;
-                            if (ptsRef.current.length > 3) {
-                                try {
-                                    const dln = Delaunay.from(ptsRef.current);
-                                    const tris: Point[][] = Array.from(dln.trianglePolygons());
-                                    if (tris.length > 0) {
-                                        const tgtTri = tris[Math.floor(Math.random() * tris.length)];
-                                        if (tgtTri && tgtTri.length === 3) {
-                                            const [p0, p1, p2] = tgtTri;
-                                            if (p0 && p1 && p2) {
-                                                const area = 0.5 * Math.abs(p0[0] * (p1[1] - p2[1]) + p1[0] * (p2[1] - p0[1]) + p2[0] * (p0[1] - p1[1]));
-                                                if (Number.isFinite(area) && area > MIN_TRI_AREA) {
-                                                    const centroid = getCentroid(tgtTri);
-                                                    if (Number.isFinite(centroid[0]) && centroid[0] > 0 && centroid[0] < curCnv.width / (window.devicePixelRatio || 1) &&
-                                                        Number.isFinite(centroid[1]) && centroid[1] > 0 && centroid[1] < curCnv.height / (window.devicePixelRatio || 1)) {
-                                                        ptsRef.current.push(centroid);
-                                                        centroidAdded = true;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                } catch (e) {
-                                    console.log("Delaunay triangulation failed:", e);
-                                }
-                            }
-                            if (!centroidAdded) {
-                                const mrg = Math.min(curCnv.width / (window.devicePixelRatio || 1), curCnv.height / (window.devicePixelRatio || 1)) * 0.05;
-                                const rx = mrg + Math.random() * (curCnv.width / (window.devicePixelRatio || 1) - 2 * mrg);
-                                const ry = mrg + Math.random() * (curCnv.height / (window.devicePixelRatio || 1) - 2 * mrg);
-                                ptsRef.current.push([rx, ry]);
-                            }
-                        }
-                    } else {
-                        addingPtsRef.current = false;
-                    }
-                } else {
-                    if (ptsRef.current.length > minPtsRef.current) {
-                        for (let i = 0; i < perfParams.RM_PTS_PER_TICK; i++) {
-                            if (ptsRef.current.length > minPtsRef.current && ptsRef.current.length > INIT_BOUNDARY_PTS) {
-                                ptsRef.current.pop();
-                            } else break;
-                        }
-                    } else {
-                        addingPtsRef.current = true;
-                        randomizePtTgts();
-                    }
-                }
-                ptsChangedRef.current = true;
-            }
-
-            curGl.uniform2f(resUniRef.current, curCnv.width, curCnv.height);
-            curGl.uniform4f(clrUniRef.current, 210 / 255, 210 / 255, 210 / 255, 1.0);
-
-            if (ptsChangedRef.current || cachePosRef.current.length === 0) {
-                const newPos: number[] = [];
-                const newDepths: number[] = [];
-                let segCount = 0;
-
-                if (ptsRef.current.length > 3) {
-                    try {
-                        const dln = Delaunay.from(ptsRef.current);
-                        const cnvW = curCnv.width / (window.devicePixelRatio || 1);
-                        const cnvH = curCnv.height / (window.devicePixelRatio || 1);
-                        const expFactor = Math.max(cnvW, cnvH) * 0.1;
-                        const voroBounds: [number, number, number, number] = [-expFactor, -expFactor, cnvW + expFactor, cnvH + expFactor];
-                        const voro = dln.voronoi(voroBounds);
-                        const style = DRAW_STYLES[styleIdx];
-
-                        for (const vCell of voro.cellPolygons()) {
-                            if (!vCell || vCell.length < 3) continue;
-                            const vCentroid = getCentroid(vCell);
-                            if (!Number.isFinite(vCentroid[0]) || !Number.isFinite(vCentroid[1])) continue;
-                            const vPerim = getPolyPerim(vCell);
-                            if (!Number.isFinite(vPerim) || vPerim === 0) continue;
-
-                            let effMaxLayers = style.maxLayers;
-                            if (style.scaleMode !== "none") {
-                                effMaxLayers = Math.min(2 + (Math.floor(vPerim) % 18), style.maxLayers);
-                                effMaxLayers = Math.max(effMaxLayers, 1);
-                            }
-
-                            for (let i = 0; i < effMaxLayers; i++) {
-                                const normDepth = style.maxLayers > 1 ? i / (style.maxLayers - 1) : 0.0;
-                                let scl: number;
-
-                                if (style.scaleMode === "linear") {
-                                    scl = 1.0 - i * (style.scaleStepLinear || 0.1);
-                                    if (scl < 0.05) break;
-                                } else if (style.scaleMode === "exp") {
-                                    scl = 1.0 / (i + 1);
-                                    if (i > 0 && scl < 0.05) break;
-                                } else {
-                                    scl = 1.0;
-                                }
-
-                                if (style.cutoffVolMul && i > 0 && scl < 1 &&
-                                    vPerim * scl < (cnvW * cnvH * style.cutoffVolMul)) break;
-
-                                const ang = style.rotate ? (1 - scl) * Math.PI / 2 * (style.scaleMode === 'exp' ? i : 1) : 0;
-                                const tfCell = transformPoly(vCell, vCentroid, scl, ang);
-                                const dpr = window.devicePixelRatio || 1;
-
-                                for (let j = 0; j < tfCell.length; j++) {
-                                    if (segCount >= MAX_SEGS ||
-                                        newPos.length + 4 > MAX_POS_FLOATS ||
-                                        newDepths.length + 2 > MAX_DEPTH_FLOATS) break;
-
-                                    const p1 = tfCell[j];
-                                    const p2 = tfCell[(j + 1) % tfCell.length];
-                                    if (Number.isFinite(p1[0]) && Number.isFinite(p1[1]) && Number.isFinite(p2[0]) && Number.isFinite(p2[1])) {
-                                        newPos.push(p1[0] * dpr, p1[1] * dpr, p2[0] * dpr, p2[1] * dpr);
-                                        newDepths.push(normDepth, normDepth);
-                                        segCount++;
-                                    }
-                                }
-                                if (segCount >= MAX_SEGS || newPos.length + 4 > MAX_POS_FLOATS || newDepths.length + 2 > MAX_DEPTH_FLOATS) break;
-                                if (style.scaleMode === "none") break;
-                            }
-                            if (segCount >= MAX_SEGS || newPos.length + 4 > MAX_POS_FLOATS || newDepths.length + 2 > MAX_DEPTH_FLOATS) break;
-                        }
-                    } catch (e) {
-                        console.log("Delaunay triangulation failed:", e);
-                    }
-                }
-                cachePosRef.current = newPos;
-                cacheDepthRef.current = newDepths;
-                ptsChangedRef.current = false;
-            }
-
-            const finalPos = cachePosRef.current;
-            const finalDepths = cacheDepthRef.current;
-            const posFloatsLen = finalPos.length;
-            const vertCount = posFloatsLen / 2;
-
-            curGl.clear(curGl.COLOR_BUFFER_BIT);
-
-            if (vertCount > 0) {
-                for (let i = 0; i < posFloatsLen; i++) curJsPosData[i] = finalPos[i];
-                curGl.bindBuffer(curGl.ARRAY_BUFFER, curPosBuf);
-                curGl.bufferSubData(curGl.ARRAY_BUFFER, 0, curJsPosData.subarray(0, posFloatsLen));
-                curGl.vertexAttribPointer(curPosAttr, 2, curGl.FLOAT, false, 0, 0);
-
-                const depthFloatsLen = finalDepths.length;
-                for (let i = 0; i < depthFloatsLen; i++) curJsDepthData[i] = finalDepths[i];
-                curGl.bindBuffer(curGl.ARRAY_BUFFER, curDepthBuf);
-                curGl.bufferSubData(curGl.ARRAY_BUFFER, 0, curJsDepthData.subarray(0, depthFloatsLen));
-                curGl.vertexAttribPointer(curDepthAttr, 1, curGl.FLOAT, false, 0, 0);
-
-                curGl.drawArrays(curGl.LINES, 0, vertCount);
-            } else {
-                curGl.drawArrays(curGl.LINES, 0, 0);
-            }
-        };
-        animFrameRef.current = requestAnimationFrame(render);
-
-        const debouncedResize = () => {
-            handleResize();
-        };
+        const debouncedResize = () => handleResize();
         window.addEventListener("resize", debouncedResize);
 
         const handleClick = () => {
@@ -507,11 +490,13 @@ const Background = ({
                 if (progRef.current) glClean.deleteProgram(progRef.current);
                 if (posBufRef.current) glClean.deleteBuffer(posBufRef.current);
                 if (depthBufRef.current) glClean.deleteBuffer(depthBufRef.current);
+                const vertShader = glClean.createShader(glClean.VERTEX_SHADER);
+                const fragShader = glClean.createShader(glClean.FRAGMENT_SHADER);
                 if (vertShader) glClean.deleteShader(vertShader);
                 if (fragShader) glClean.deleteShader(fragShader);
             }
         };
-    }, [initPts, randomizePtTgts, styleIdx, perfParams]);
+    }, [initPts, randomizePtTgts, styleIdx, perfParams, draw, staticMode]);
 
     return (
         <div className="absolute inset-0 bg-[#1e1e1e]">

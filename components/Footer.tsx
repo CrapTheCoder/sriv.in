@@ -21,6 +21,23 @@ export default function Footer() {
     const [canArrowReappear, setCanArrowReappear] = useState(true);
     const [showArrowComponent, setShowArrowComponent] = useState(false);
 
+    const [arrowSize, setArrowSize] = useState(48);
+
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth < 768) {
+                setArrowSize(24);
+            } else {
+                setArrowSize(48);
+            }
+        };
+
+        handleResize();
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     const scrollStopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const arrowReappearTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -164,7 +181,7 @@ export default function Footer() {
                     >
                         <ChevronDown
                             className="flex items-center animate-bounce"
-                            size={48}
+                            size={arrowSize}
                             aria-hidden="true"
                         />
                     </motion.div>
