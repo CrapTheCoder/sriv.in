@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
-import { motion } from "motion/react";
+import React, {useEffect, useRef, useState} from "react";
+import {motion} from "motion/react";
 
 type ScrollDotsProps = {
     sectionRefs: React.RefObject<HTMLDivElement | null>[];
 };
 
-export default function ScrollDots({ sectionRefs }: ScrollDotsProps) {
+export default function ScrollDots({sectionRefs}: ScrollDotsProps) {
     const [activeSection, setActiveSection] = useState(0);
 
     const observerRef = useRef<IntersectionObserver | null>(null);
@@ -51,7 +51,7 @@ export default function ScrollDots({ sectionRefs }: ScrollDotsProps) {
     }, [sectionRefs]);
 
     const scrollTo = (i: number) => {
-        sectionRefs[i].current?.scrollIntoView({ behavior: "smooth" });
+        sectionRefs[i].current?.scrollIntoView({behavior: "smooth"});
     };
 
     return (
@@ -70,8 +70,8 @@ export default function ScrollDots({ sectionRefs }: ScrollDotsProps) {
                             display: "block",
                             position: "relative",
                         }}
-                        animate={{ height: isActive ? 32 : 8 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        animate={{height: isActive ? 32 : 8}}
+                        transition={{type: "spring", stiffness: 300, damping: 20}}
                         onClick={() => scrollTo(idx)}
                         aria-label={`Go to section ${idx + 1}`}
                     />

@@ -4,7 +4,7 @@ import Section from "./Section";
 import SocialLinks from "../SocialLinks";
 import {SlideFadeIn} from "../SlideFadeIn";
 import Background from "../Background";
-import { useCustomCursor } from "@/components/providers/CustomCursorProvider";
+import {useCustomCursor} from "@/components/providers/CustomCursorProvider";
 
 type SectionProps = {
     className?: string;
@@ -31,7 +31,7 @@ const SubText = () => {
 };
 
 const Section1 = ({className = "", ref}: SectionProps) => {
-    const { isCursorVisible: isDesktop } = useCustomCursor();
+    const {isCursorVisible: isDesktop} = useCustomCursor();
     return (
         <Section className={`${className}`} ref={ref}>
             <div>

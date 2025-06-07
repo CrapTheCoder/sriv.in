@@ -8,8 +8,8 @@ import {DisplayLanguages, DisplayTechnologies} from "../Skills";
 import {SlideFadeIn} from "../SlideFadeIn";
 import {useEffect, useState} from "react";
 import Background from "@/components/Background";
-import { useCustomCursor } from "@/components/providers/CustomCursorProvider";
-import { cn } from "@/lib/utils";
+import {useCustomCursor} from "@/components/providers/CustomCursorProvider";
+import {cn} from "@/lib/utils";
 
 type SectionProps = {
     className?: string;
@@ -17,7 +17,7 @@ type SectionProps = {
 };
 
 const Section2 = ({className = "", ref}: SectionProps) => {
-    const { isCursorVisible: isDesktop } = useCustomCursor();
+    const {isCursorVisible: isDesktop} = useCustomCursor();
     const [direction, setDirection] = useState<"left" | "right">("left");
     useEffect(() => {
         const updateDirection = () => {
@@ -31,10 +31,8 @@ const Section2 = ({className = "", ref}: SectionProps) => {
 
     return (
         <Section className={`${className} border-t`} ref={ref} sectionName="About">
-            <Background
-                className="flex flex-col justify-center items-center align-middle text-shadow-lg/100 text-white py-12 md:py-20"
-                staticMode={!isDesktop}
-            >
+            <Background staticMode={!isDesktop}/>
+            <div className="relative z-10 w-full h-full flex flex-col justify-center items-center py-12 md:py-20">
                 <div
                     className={cn(
                         "w-full max-w-[90rem]",
@@ -44,9 +42,7 @@ const Section2 = ({className = "", ref}: SectionProps) => {
                         isDesktop ? "backdrop-blur-[3rem]" : "bg-background/80",
                         "rounded-[70px]",
                         "shadow-2xl",
-                        "pointer-events-auto",
-                        "relative",
-                        "z-10"
+                        "pointer-events-auto"
                     )}
                 >
                     <div className="w-full">
@@ -85,7 +81,7 @@ const Section2 = ({className = "", ref}: SectionProps) => {
                         </div>
                     </div>
                 </div>
-            </Background>
+            </div>
         </Section>
     );
 };

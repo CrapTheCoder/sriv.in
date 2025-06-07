@@ -27,7 +27,7 @@ export function SlideFadeIn({
     slideOffset?: number;
 }) {
     const ref = useRef(null);
-    const { isCursorVisible: isDesktop } = useCustomCursor();
+    const {isCursorVisible: isDesktop} = useCustomCursor();
     const isInView = useInView(ref, {
         margin:
             `${inMargin} 0px ${outMargin} 0px` as `${MarginValue} ${MarginValue} ${MarginValue} ${MarginValue}`,

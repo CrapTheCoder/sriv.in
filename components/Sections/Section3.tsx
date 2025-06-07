@@ -7,8 +7,8 @@ import Link from "next/link";
 import SmallTextPills from "@/components/SmallTextPills";
 import Section from "./Section";
 import Background from "@/components/Background";
-import { useCustomCursor } from "../providers/CustomCursorProvider";
-import { cn } from "@/lib/utils";
+import {useCustomCursor} from "../providers/CustomCursorProvider";
+import {cn} from "@/lib/utils";
 
 interface MonthYear {
     month: number;
@@ -178,13 +178,11 @@ type SectionProps = {
 };
 
 const Section3 = ({className = "", ref}: SectionProps) => {
-    const { isCursorVisible: isDesktop } = useCustomCursor();
+    const {isCursorVisible: isDesktop} = useCustomCursor();
     return (
         <Section className={`${className} border-t`} ref={ref} sectionName="Projects">
-            <Background
-                className="flex flex-col justify-center items-center align-middle text-shadow-lg/100 text-white py-12 md:py-20"
-                staticMode={!isDesktop}
-            >
+            <Background staticMode={!isDesktop}/>
+            <div className="relative z-10 w-full h-full flex flex-col justify-center items-center py-12 md:py-20">
                 <div
                     className={cn(
                         "w-fit",
@@ -194,9 +192,7 @@ const Section3 = ({className = "", ref}: SectionProps) => {
                         isDesktop ? "backdrop-blur-[3rem]" : "bg-background/80",
                         "rounded-[70px]",
                         "shadow-2xl",
-                        "pointer-events-auto",
-                        "relative",
-                        "z-10"
+                        "pointer-events-auto"
                     )}
                 >
                     <h1
@@ -221,7 +217,7 @@ const Section3 = ({className = "", ref}: SectionProps) => {
                     </div>
                     <div className="h-20 block md:hidden"/>
                 </div>
-            </Background>
+            </div>
         </Section>
     );
 }
