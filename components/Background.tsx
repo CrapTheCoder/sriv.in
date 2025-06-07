@@ -276,7 +276,7 @@ const Background = ({
         } else {
             curGl.drawArrays(curGl.LINES, 0, 0);
         }
-    }, [styleIdx]);
+    }, [styleIdx, isDesktop]);
 
     useEffect(() => {
         if (staticMode) {
@@ -436,6 +436,10 @@ const Background = ({
                 animFrameRef.current = requestAnimationFrame(render);
                 if (document.hidden) return;
 
+                if (lastPtUpdateRef.current === 0) {
+                    lastPtUpdateRef.current = time;
+                }
+
                 if (time - lastPtUpdateRef.current > perfParams.PT_UPDATE_MS) {
                     lastPtUpdateRef.current = time;
                     if (addingPtsRef.current) {
@@ -491,7 +495,7 @@ const Background = ({
                 if (fragShader) glClean.deleteShader(fragShader);
             }
         };
-    }, [initPts, randomizePtTgts, styleIdx, perfParams, draw, staticMode]);
+    }, [initPts, randomizePtTgts, styleIdx, perfParams, draw, staticMode, isDesktop]);
 
     return (
         <div className="fixed inset-0 bg-[#1e1e1e]">
@@ -506,4 +510,5 @@ const Background = ({
         </div>
     );
 };
+
 export default Background;
