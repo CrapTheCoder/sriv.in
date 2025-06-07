@@ -4,12 +4,14 @@ import React, {useEffect, useRef, useState} from "react";
 import {AnimatePresence, motion, useScroll} from "motion/react";
 import {ChevronDown} from "lucide-react";
 import {usePathname} from "next/navigation";
+import { useCustomCursor } from "./providers/CustomCursorProvider";
 
 const LAST_SECTION_THRESHOLD = 50;
 const SCROLL_STOP_DEBOUNCE_TIME = 150;
 const ARROW_REAPPEAR_DELAY = 1000;
 
 export default function Footer() {
+    const { isCursorVisible: isDesktop } = useCustomCursor();
     const pathname = usePathname();
     const isIndex = pathname === "/";
 
@@ -157,6 +159,10 @@ export default function Footer() {
         hidden: {y: "100%", opacity: 0, transition: {duration: 0, ease: "easeIn"}},
         visible: {y: 0, opacity: 1, transition: {duration: 0.3, ease: "easeOut"}},
     };
+
+    if (!isDesktop) {
+        return null;
+    }
 
     return (
         <div className="relative flex justify-center pointer-events-none">

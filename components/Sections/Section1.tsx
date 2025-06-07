@@ -4,7 +4,7 @@ import Section from "./Section";
 import SocialLinks from "../SocialLinks";
 import {SlideFadeIn} from "../SlideFadeIn";
 import Background from "../Background";
-import {useCustomCursor} from "@/components/providers/CustomCursorProvider";
+import { useCustomCursor } from "@/components/providers/CustomCursorProvider";
 
 type SectionProps = {
     className?: string;
@@ -31,7 +31,7 @@ const SubText = () => {
 };
 
 const Section1 = ({className = "", ref}: SectionProps) => {
-    const {isCursorVisible: isDesktop} = useCustomCursor();
+    const { isCursorVisible: isDesktop } = useCustomCursor();
 
     const content = (
         <>
@@ -53,17 +53,9 @@ const Section1 = ({className = "", ref}: SectionProps) => {
     return (
         <Section className={`${className}`} ref={ref}>
             <div>
-                {isDesktop ? (
-                    <Background className={containerClassName}>
-                        {content}
-                    </Background>
-                ) : (
-                    <div className="absolute inset-0 bg-[#1e1e1e]">
-                        <div className={`relative w-full h-full z-10 ${containerClassName} pointer-events-none`}>
-                            {content}
-                        </div>
-                    </div>
-                )}
+                <Background className={containerClassName} staticMode={!isDesktop}>
+                    {content}
+                </Background>
             </div>
         </Section>
     );

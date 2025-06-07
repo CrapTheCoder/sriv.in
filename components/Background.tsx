@@ -123,10 +123,12 @@ const Background = ({
                         children,
                         className = "",
                         backgroundOpacity = 1,
+                        staticMode = false,
                     }: {
     children?: React.ReactNode;
     className?: string;
     backgroundOpacity?: number;
+    staticMode?: boolean;
 }) => {
     const cnvRef = useRef<HTMLCanvasElement>(null);
     const {isCursorVisible: isDesktop} = useCustomCursor();
@@ -235,6 +237,13 @@ const Background = ({
             gl.drawArrays(gl.LINES, 0, animState.vertexCount);
         }
     }, [styleIdx, isDesktop]);
+
+    // Effect to handle static drawing when style or mode changes
+    useEffect(() => {
+        if (staticMode && glObjectsRef.current) {
+            draw();
+        }
+    }, [staticMode, styleIdx, draw]);
 
     useEffect(() => {
         const cnv = cnvRef.current;
@@ -347,46 +356,51 @@ const Background = ({
                 const resUni = gl.getUniformLocation(glObjects.prog, "u_res");
                 gl.uniform2f(resUni, newPhysW, newPhysH);
                 initPoints(newW, newH);
+                // Trigger a draw in static mode after resize
+                if (staticMode) {
+                    draw();
+                }
             }
         };
 
         handleResize();
 
-        const renderLoop = (time: number) => {
-            animState.animFrameId = requestAnimationFrame(renderLoop);
-            if (document.hidden) return;
+        if (!staticMode) {
+            const renderLoop = (time: number) => {
+                animState.animFrameId = requestAnimationFrame(renderLoop);
+                if (document.hidden) return;
 
-            if (isDesktop && time - animState.lastPtUpdate > perfParams.PT_UPDATE_MS) {
-                animState.lastPtUpdate = time;
-                let didChange = false;
-                if (animState.addingPts) {
-                    if (animState.pts.length < animState.maxPts && Math.random() * 100 < perfParams.ADD_PT_PROB) {
-                        const w = cnv.width / (window.devicePixelRatio || 1),
-                            h = cnv.height / (window.devicePixelRatio || 1);
-                        animState.pts.push([Math.random() * w, Math.random() * h]);
-                        didChange = true;
-                    } else if (animState.pts.length >= animState.maxPts) {
-                        animState.addingPts = false;
-                    }
-                } else {
-                    if (animState.pts.length > animState.minPts && Math.random() * 100 < perfParams.RM_PT_PROB) {
-                        for (let i = 0; i < perfParams.RM_PTS_PER_TICK; i++) {
-                            if (animState.pts.length > animState.minPts && animState.pts.length > INIT_BOUNDARY_PTS) {
-                                animState.pts.pop();
-                                didChange = true;
-                            }
+                if (isDesktop && time - animState.lastPtUpdate > perfParams.PT_UPDATE_MS) {
+                    animState.lastPtUpdate = time;
+                    let didChange = false;
+                    if (animState.addingPts) {
+                        if (animState.pts.length < animState.maxPts && Math.random() * 100 < perfParams.ADD_PT_PROB) {
+                            const w = cnv.width / (window.devicePixelRatio || 1),
+                                h = cnv.height / (window.devicePixelRatio || 1);
+                            animState.pts.push([Math.random() * w, Math.random() * h]);
+                            didChange = true;
+                        } else if (animState.pts.length >= animState.maxPts) {
+                            animState.addingPts = false;
                         }
-                    } else if (animState.pts.length <= animState.minPts) {
-                        animState.addingPts = true;
-                        randomizePtTgts();
+                    } else {
+                        if (animState.pts.length > animState.minPts && Math.random() * 100 < perfParams.RM_PT_PROB) {
+                            for (let i = 0; i < perfParams.RM_PTS_PER_TICK; i++) {
+                                if (animState.pts.length > animState.minPts && animState.pts.length > INIT_BOUNDARY_PTS) {
+                                    animState.pts.pop();
+                                    didChange = true;
+                                }
+                            }
+                        } else if (animState.pts.length <= animState.minPts) {
+                            animState.addingPts = true;
+                            randomizePtTgts();
+                        }
                     }
+                    if (didChange) animState.ptsChanged = true;
                 }
-                if (didChange) animState.ptsChanged = true;
-            }
-            draw();
-        };
-
-        animState.animFrameId = requestAnimationFrame(renderLoop);
+                draw();
+            };
+            animState.animFrameId = requestAnimationFrame(renderLoop);
+        }
 
         const debouncedResize = () => handleResize();
         window.addEventListener("resize", debouncedResize);
@@ -401,21 +415,21 @@ const Background = ({
             window.removeEventListener("resize", debouncedResize);
             cnv.removeEventListener("click", handleClick);
         };
-    }, [isDesktop, perfParams, draw]);
+    }, [isDesktop, perfParams, draw, staticMode]);
 
     return (<div className="absolute inset-0 bg-[#1e1e1e]">
-            <div
-                className="fixed inset-0 transition-opacity duration-700 ease-in-out"
-                style={{opacity: backgroundOpacity}}
-            >
-                <canvas
-                    ref={cnvRef}
-                    className="absolute inset-0 w-full h-full z-0"
-                />
-            </div>
-            <div className={`relative w-full h-full z-10 ${className} pointer-events-none`}>
-                {children}
-            </div>
-        </div>);
+        <div
+            className="fixed inset-0 transition-opacity duration-700 ease-in-out"
+            style={{opacity: backgroundOpacity}}
+        >
+            <canvas
+                ref={cnvRef}
+                className="absolute inset-0 w-full h-full z-0"
+            />
+        </div>
+        <div className={`relative w-full h-full z-10 ${className} pointer-events-none`}>
+            {children}
+        </div>
+    </div>);
 };
 export default Background;

@@ -11,7 +11,6 @@ export default function Home() {
         useRef<HTMLDivElement>(null),
         useRef<HTMLDivElement>(null),
         useRef<HTMLDivElement>(null),
-        useRef<HTMLDivElement>(null),
     ];
 
     return (
