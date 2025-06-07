@@ -2,6 +2,7 @@
 
 import React, {useCallback, useEffect, useRef, useState} from "react";
 import {Delaunay} from "d3-delaunay";
+import {useCustomCursor} from "@/components/providers/CustomCursorProvider";
 
 const VERT_SHADER = `
 attribute vec2 a_pos;
@@ -74,9 +75,6 @@ const MOBILE_PARAMS = {
     RM_PTS_PER_TICK: 0,
 };
 
-
-const MIN_TRI_AREA = 15;
-
 const getCentroid = (poly: Point[]): Point => {
     if (!poly || poly.length === 0) return [0, 0];
     let x = 0, y = 0;
@@ -121,13 +119,12 @@ const transformPoly = (poly: Point[], centroid: Point, scale: number, angle: num
 };
 
 const Background = ({
-                        backgroundOpacity = 1,
                         staticMode = false,
                     }: {
-    backgroundOpacity?: number;
     staticMode?: boolean;
 }) => {
     const cnvRef = useRef<HTMLCanvasElement>(null);
+    const { isCursorVisible: isDesktop } = useCustomCursor();
     const glRef = useRef<WebGLRenderingContext | null>(null);
     const progRef = useRef<WebGLProgram | null>(null);
 
@@ -174,6 +171,8 @@ const Background = ({
             !curDepthBuf || curDepthAttr === -1 ||
             !curJsPosData || !curJsDepthData ||
             curCnv.width === 0 || curCnv.height === 0) return;
+
+        curGl.lineWidth(isDesktop ? 1.0 : 3.0);
 
         curGl.uniform2f(resUniRef.current, curCnv.width, curCnv.height);
         curGl.uniform4f(clrUniRef.current, 210 / 255, 210 / 255, 210 / 255, 1.0);
@@ -495,10 +494,9 @@ const Background = ({
     }, [initPts, randomizePtTgts, styleIdx, perfParams, draw, staticMode]);
 
     return (
-        <div className="absolute inset-0 bg-[#1e1e1e]">
+        <div className="fixed inset-0 bg-[#1e1e1e]">
             <div
-                className="absolute inset-0 transition-opacity duration-700 ease-in-out"
-                style={{opacity: backgroundOpacity}}
+                className="fixed inset-0 transition-opacity duration-700 ease-in-out"
             >
                 <canvas
                     ref={cnvRef}

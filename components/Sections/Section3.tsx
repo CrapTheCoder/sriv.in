@@ -6,7 +6,6 @@ import {Github, Link as LinkIcon} from "lucide-react";
 import Link from "next/link";
 import SmallTextPills from "@/components/SmallTextPills";
 import Section from "./Section";
-import Background from "@/components/Background";
 import {useCustomCursor} from "../providers/CustomCursorProvider";
 import {cn} from "@/lib/utils";
 
@@ -180,9 +179,9 @@ type SectionProps = {
 const Section3 = ({className = "", ref}: SectionProps) => {
     const {isCursorVisible: isDesktop} = useCustomCursor();
     return (
-        <Section className={`${className} border-t`} ref={ref} sectionName="Projects">
-            <Background staticMode={!isDesktop}/>
-            <div className="relative z-10 w-full h-full flex flex-col justify-center items-center py-12 md:py-20">
+        <Section className={`${className}`} ref={ref} sectionName="Projects">
+            <div
+                className="relative z-10 w-full h-full flex flex-col justify-center items-center py-12 md:py-20 px-4 md:px-8">
                 <div
                     className={cn(
                         "w-fit",

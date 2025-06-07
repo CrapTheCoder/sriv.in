@@ -25,21 +25,21 @@ const AboutMe = () => {
             </h2>
 
             <div
-                className="mt-0 sm:mt-1 px-2 w-95 sm:w-120 md:w-83 lg:w-100 xl:w-150 text-sm sm:text-base md:text-base lg:text-lg 2xl:text-xl">
+                className="mt-0 sm:mt-1 px-2 w-full text-sm sm:text-base md:text-base lg:text-lg 2xl:text-xl">
                 <SlideFadeIn direction={direction} inMargin="-100px" outMargin="-80px">
-                    <p data-text-cursor className="w-fit">
+                    <p data-text-cursor>
                         I&apos;m a competitive programmer interested in Algorithms, Compilers, OS, Networks, and AI/ML.
                     </p>
                 </SlideFadeIn>
                 <br/>
                 <SlideFadeIn direction={direction} inMargin="-100px" outMargin="-80px">
-                    <p data-text-cursor className="w-fit">
+                    <p data-text-cursor>
                         I enjoy solving complex problems, figuring out heuristics, and optimizing solutions.
                     </p>
                 </SlideFadeIn>
                 <br/>
                 <SlideFadeIn direction={direction} inMargin="-100px" outMargin="-80px">
-                    <p data-text-cursor className="w-fit">
+                    <p data-text-cursor>
                         I am a 2x IOITCer, rated 1998 in CodeForces and 2148 in CodeChef. I have built projects such as
                         a Lightweight Online Judge and a Chess Engine.
                     </p>

@@ -7,9 +7,8 @@ import Education from "../Education";
 import {DisplayLanguages, DisplayTechnologies} from "../Skills";
 import {SlideFadeIn} from "../SlideFadeIn";
 import {useEffect, useState} from "react";
-import Background from "@/components/Background";
-import {useCustomCursor} from "@/components/providers/CustomCursorProvider";
-import {cn} from "@/lib/utils";
+import { useCustomCursor } from "@/components/providers/CustomCursorProvider";
+import { cn } from "@/lib/utils";
 
 type SectionProps = {
     className?: string;
@@ -17,7 +16,7 @@ type SectionProps = {
 };
 
 const Section2 = ({className = "", ref}: SectionProps) => {
-    const {isCursorVisible: isDesktop} = useCustomCursor();
+    const { isCursorVisible: isDesktop } = useCustomCursor();
     const [direction, setDirection] = useState<"left" | "right">("left");
     useEffect(() => {
         const updateDirection = () => {
@@ -30,9 +29,8 @@ const Section2 = ({className = "", ref}: SectionProps) => {
     }, []);
 
     return (
-        <Section className={`${className} border-t`} ref={ref} sectionName="About">
-            <Background staticMode={!isDesktop}/>
-            <div className="relative z-10 w-full h-full flex flex-col justify-center items-center py-12 md:py-20">
+        <Section className={`${className}`} ref={ref} sectionName="About">
+            <div className="relative z-10 w-full h-full flex flex-col justify-center items-center py-12 md:py-20 px-4 md:px-8">
                 <div
                     className={cn(
                         "w-full max-w-[90rem]",
