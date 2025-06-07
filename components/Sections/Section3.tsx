@@ -6,6 +6,8 @@ import {Github, Link as LinkIcon} from "lucide-react";
 import Link from "next/link";
 import SmallTextPills from "@/components/SmallTextPills";
 import Section from "./Section";
+import { useCustomCursor } from "../providers/CustomCursorProvider";
+import { cn } from "@/lib/utils";
 
 interface MonthYear {
     month: number;
@@ -172,21 +174,22 @@ type SectionProps = {
 };
 
 const Section3 = ({className = "", ref}: SectionProps) => {
+    const { isCursorVisible: isDesktop } = useCustomCursor();
     return (
         <Section className={`${className} border-t`} ref={ref} sectionName="Projects">
             <div
-                className="
-                    w-fit
-                    mx-auto
-                    py-8 md:py-12
-                    px-8 sm:px-12 md:px-16
-                    backdrop-blur-[3rem]
-                    rounded-[70px]
-                    shadow-2xl
-                    pointer-events-auto
-                    relative
-                    z-10
-                "
+                className={cn(
+                    "w-fit",
+                    "mx-auto",
+                    "py-8 md:py-12",
+                    "px-8 sm:px-12 md:px-16",
+                    isDesktop && "backdrop-blur-[3rem]",
+                    "rounded-[70px]",
+                    "shadow-2xl",
+                    "pointer-events-auto",
+                    "relative",
+                    "z-10"
+                )}
             >
                 <h1
                     className="text-4xl sm:text-5xl md:text-5xl lg:text-6xl xl:text-7xl font-bold font-header tracking-[.1rem] pointer-events-auto text-center"

@@ -18,17 +18,17 @@ export default function ScrollDots({sectionRefs}: ScrollDotsProps) {
         return () => window.removeEventListener("resize", updateSize);
     }, []);
 
-    const refs = isMobile ? sectionRefs : sectionRefs.slice(0, -1);
-
     const [activeSection, setActiveSection] = useState<number>(0);
     const [activeProgress, setActiveProgress] = useState<number>(0);
 
     useEffect(() => {
+        if (isMobile) return;
+
         const handleScroll = () => {
             const scrollY = window.scrollY;
             const viewH = window.innerHeight;
 
-            refs.forEach((ref, idx) => {
+            sectionRefs.forEach((ref, idx) => {
                 const el = ref.current;
                 if (!el) return;
                 const rect = el.getBoundingClientRect();
@@ -36,7 +36,7 @@ export default function ScrollDots({sectionRefs}: ScrollDotsProps) {
                 const height = rect.height;
 
                 const isFirst = idx === 0;
-                const isLast = idx === refs.length - 1;
+                const isLast = idx === sectionRefs.length - 1;
 
                 let start: number, end: number;
 
@@ -64,16 +64,20 @@ export default function ScrollDots({sectionRefs}: ScrollDotsProps) {
         window.addEventListener("scroll", handleScroll);
         handleScroll();
         return () => window.removeEventListener("scroll", handleScroll);
-    }, [refs]);
+    }, [sectionRefs, isMobile]);
 
     const scrollTo = (i: number) => {
-        refs[i].current?.scrollIntoView({behavior: "smooth"});
+        sectionRefs[i].current?.scrollIntoView({behavior: "smooth"});
     };
+
+    if (isMobile) {
+        return null;
+    }
 
     return (
         <div
             className="fixed right-2 sm:right-3 top-1/2 -translate-y-1/2 flex flex-col items-center z-40 pointer-events-none">
-            {refs.map((_, idx) => {
+            {sectionRefs.map((_, idx) => {
                 const isActive = idx === activeSection;
                 return (
                     <motion.button

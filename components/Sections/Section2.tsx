@@ -9,6 +9,7 @@ import {SlideFadeIn} from "../SlideFadeIn";
 import {useEffect, useState} from "react";
 import Background from "@/components/Background";
 import { useCustomCursor } from "@/components/providers/CustomCursorProvider";
+import { cn } from "@/lib/utils";
 
 type SectionProps = {
     className?: string;
@@ -33,18 +34,18 @@ const Section2 = ({className = "", ref}: SectionProps) => {
             {isDesktop && <Background />}
 
             <div
-                className="
-                    w-full max-w-[90rem]
-                    mx-auto
-                    py-8 md:py-12
-                    px-8 sm:px-12 md:px-16
-                    backdrop-blur-[3rem]
-                    rounded-[70px]
-                    shadow-2xl
-                    pointer-events-auto
-                    relative
-                    z-10
-                "
+                className={cn(
+                    "w-full max-w-[90rem]",
+                    "mx-auto",
+                    "py-8 md:py-12",
+                    "px-8 sm:px-12 md:px-16",
+                    isDesktop && "backdrop-blur-[3rem]",
+                    "rounded-[70px]",
+                    "shadow-2xl",
+                    "pointer-events-auto",
+                    "relative",
+                    "z-10"
+                )}
             >
                 <div className="w-full">
                     <div
