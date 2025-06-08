@@ -1,6 +1,6 @@
 "use client";
 
-import React, {useCallback, useEffect, useRef, useState} from "react";
+import React, {ReactNode, useCallback, useEffect, useRef, useState} from "react";
 import {Delaunay} from "d3-delaunay";
 import {useCustomCursor} from "@/components/providers/CustomCursorProvider";
 
@@ -118,13 +118,9 @@ const transformPoly = (poly: Point[], centroid: Point, scale: number, angle: num
     });
 };
 
-const Background = ({
-                        staticMode = false,
-                    }: {
-    staticMode?: boolean;
-}) => {
+const Background = ({children}: { children: ReactNode }) => {
     const cnvRef = useRef<HTMLCanvasElement>(null);
-    const { isCursorVisible: isDesktop } = useCustomCursor();
+    const {isCursorVisible: isDesktop} = useCustomCursor();
     const glRef = useRef<WebGLRenderingContext | null>(null);
     const progRef = useRef<WebGLProgram | null>(null);
 
@@ -155,7 +151,7 @@ const Background = ({
 
     const [styleIdx, setStyleIdx] = useState(0);
     const animFrameRef = useRef<number | null>(null);
-    const perfParams = staticMode ? MOBILE_PARAMS : DESKTOP_PARAMS;
+    const perfParams = isDesktop ? DESKTOP_PARAMS : MOBILE_PARAMS;
 
     const draw = useCallback(() => {
         const curGl = glRef.current;
@@ -279,10 +275,10 @@ const Background = ({
     }, [styleIdx, isDesktop]);
 
     useEffect(() => {
-        if (staticMode) {
+        if (!isDesktop) {
             draw();
         }
-    }, [styleIdx, staticMode, draw]);
+    }, [styleIdx, isDesktop, draw]);
 
     const randomizePtTgts = useCallback(() => {
         let maxTgt = Math.floor(Math.random() * (perfParams.MAX_PTS_UPPER - perfParams.MAX_PTS_LOWER + 1)) + perfParams.MAX_PTS_LOWER;
@@ -425,13 +421,13 @@ const Background = ({
                     ptsChangedRef.current = true;
                 }
             }
-            if (staticMode) {
+            if (!isDesktop) {
                 draw();
             }
         };
         handleResize();
 
-        if (!staticMode) {
+        if (isDesktop) {
             const render = (time: number) => {
                 animFrameRef.current = requestAnimationFrame(render);
                 if (document.hidden) return;
@@ -495,19 +491,24 @@ const Background = ({
                 if (fragShader) glClean.deleteShader(fragShader);
             }
         };
-    }, [initPts, randomizePtTgts, styleIdx, perfParams, draw, staticMode, isDesktop]);
+    }, [initPts, randomizePtTgts, styleIdx, perfParams, draw, isDesktop]);
 
     return (
-        <div className="fixed inset-0 bg-[#1e1e1e]">
-            <div
-                className="fixed inset-0 transition-opacity duration-700 ease-in-out"
-            >
-                <canvas
-                    ref={cnvRef}
-                    className="absolute inset-0 w-full h-full z-0"
-                />
+        <>
+            <div className="fixed inset-0 bg-[#1e1e1e]">
+                <div
+                    className="fixed inset-0 transition-opacity duration-700 ease-in-out pointer-events-auto"
+                >
+                    <canvas
+                        ref={cnvRef}
+                        className="absolute inset-0 w-full h-full z-0"
+                    />
+                </div>
             </div>
-        </div>
+            <div className="pointer-events-none">
+                {children}
+            </div>
+        </>
     );
 };
 

@@ -10,7 +10,6 @@ import {SlideFadeIn} from "../SlideFadeIn";
 import {useEffect, useState} from "react";
 import { useCustomCursor } from "@/components/providers/CustomCursorProvider";
 import { cn } from "@/lib/utils";
-import Background from "@/components/Background";
 
 type SectionProps = {
     className?: string;
@@ -32,8 +31,6 @@ const Section2 = ({className = "", ref}: SectionProps) => {
 
     return (
         <Section className={`${className}`} ref={ref} sectionName="About">
-            <Background staticMode={!isDesktop} />
-
             <div className="relative z-10 w-full h-full flex flex-col justify-center items-center py-12 md:py-20 px-4 md:px-8 pointer-events-none">
                 <div
                     className={cn(

@@ -569,7 +569,6 @@ const CustomCursor: React.FC = () => {
                             className="w-full h-full"
                         >
                             <GlowEffect
-                                colors={["#fff085"]}
                                 mode="colorShift"
                                 blur="strongest"
                                 duration={4}
