@@ -3,7 +3,6 @@
 import Section from "./Section";
 import SocialLinks from "../SocialLinks";
 import {SlideFadeIn} from "../SlideFadeIn";
-import {useCustomCursor} from "@/components/providers/CustomCursorProvider";
 
 type SectionProps = {
     className?: string;
@@ -30,7 +29,6 @@ const SubText = () => {
 };
 
 const Section1 = ({className = "", ref}: SectionProps) => {
-    const {isCursorVisible: isDesktop} = useCustomCursor();
     return (
         <Section className={`${className}`} ref={ref}>
             <div className="relative z-10 flex flex-col justify-center items-center align-middle text-shadow-lg/100 text-yellow-200">
