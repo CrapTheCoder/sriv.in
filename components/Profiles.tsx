@@ -44,7 +44,7 @@ const profiles = [
         name: "CodeChef \u2014 Five Star",
         site: "https://www.codechef.com/users/crap_the_coder",
         logoPath: "/website-logos/codechef-logo.jpg",
-        description: "India Rank ~309 | Global Rank ~681",
+        description: "India Rank ~300 | Global Rank ~680",
         size: "size-10 sm:size-10 md:size-17",
     },
 ];

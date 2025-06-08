@@ -20,7 +20,7 @@ const Logo = ({
         <Link
             data-cursor-generic
             href="/"
-            className="flex items-center gap-x-0 sm:gap-x-1 ml-3 rounded-xl px-2"
+            className="flex items-center gap-x-0 sm:gap-x-1 ml-3 rounded-xl px-2 pointer-events-auto"
         >
             <motion.div
                 className=""
@@ -161,7 +161,7 @@ export default function Header() {
                         />
                     </div>
 
-                    <div className="flex basis-0 flex-1 justify-end items-center pr-3 sm:pr-7">
+                    <div className="flex basis-0 justify-end items-center pr-3 sm:pr-7 pointer-events-auto">
                         <HeaderLinks
                             isScrolled={isScrolled}
                             animationDuration={animationDuration}
