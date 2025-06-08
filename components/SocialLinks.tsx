@@ -47,7 +47,6 @@ const SocialLinkItem = ({name, icon: Icon, link}: Social) => {
     const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const isEmail = name === "Email" && link.startsWith("mailto:");
-    const isResume = name === "Resume";
 
     useEffect(() => {
         return () => {
