@@ -8,6 +8,11 @@ import { motion, AnimatePresence } from "motion/react";
 
 const socials = [
     {
+        name: "LinkedIn",
+        icon: Linkedin,
+        link: "https://www.linkedin.com/in/srivaths-p/",
+    },
+    {
         name: "Youtube",
         icon: Youtube,
         link: "https://www.youtube.com/@sriv",
@@ -23,19 +28,14 @@ const socials = [
         link: "mailto:srivathspradeep@gmail.com",
     },
     {
-        name: "LinkedIn",
-        icon: Linkedin,
-        link: "https://www.linkedin.com/in/srivaths-p/",
+        name: "Resume",
+        icon: FileUser,
+        link: "https://drive.google.com/file/d/1LSMxaMtS34-ipmhPB29S3lFd-j2yKN7f/view?usp=drive_link",
     },
     {
         name: "Phone",
         icon: Phone,
         link: "+91-7010655082",
-    },
-    {
-        name: "Resume",
-        icon: FileUser,
-        link: "https://drive.google.com/file/d/1LSMxaMtS34-ipmhPB29S3lFd-j2yKN7f/view?usp=drive_link",
     },
 ] as const;
 
