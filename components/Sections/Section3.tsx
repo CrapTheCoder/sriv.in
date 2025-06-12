@@ -33,7 +33,7 @@ const projects: Project[] = [
     {
         title: "This Website",
         shortDescription: "Personal portfolio.",
-        tags: ["Next.js", "Tailwind CSS", "TypeScript", "Framer Motion/motion.dev"],
+        tags: ["Next.js", "React", "Tailwind CSS", "TypeScript", "Framer Motion/motion.dev"],
         link: "/",
         date: {start: {month: 6, year: 2025}, end: "Present"},
         github: "https://github.com/CrapTheCoder/sriv.in/",
