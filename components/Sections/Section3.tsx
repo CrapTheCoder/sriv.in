@@ -36,6 +36,7 @@ const projects: Project[] = [
         tags: ["Next.js", "Tailwind CSS", "TypeScript", "Framer Motion/motion.dev"],
         link: "/",
         date: {start: {month: 6, year: 2025}, end: "Present"},
+        github: "https://github.com/CrapTheCoder/sriv.in/",
     },
     {
         title: "Dockerless Online Judge",
